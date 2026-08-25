@@ -46,17 +46,6 @@
       margin-bottom: 12px;
     }
 
-    .card-title {
-      font-size: 0.85rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 10px;
-      color: var(--accent);
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 4px;
-    }
-
     .grid-2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -139,6 +128,13 @@
 
     .metric-value {
       font-size: 0.9rem;
+      font-weight: 600;
+      color: #ffffff;
+      text-align: right;
+    }
+
+    .metric-value-sub {
+      font-size: 0.8rem;
       font-weight: 600;
       color: #ffffff;
       text-align: right;
@@ -278,35 +274,48 @@
       </div>
       <div class="metric-value"><span id="dispWoWbgt">0.0</span> &deg;C WBGT<br/>(<span id="dispFactor">+0.0%</span>)</div>
     </div>
+
+    <div class="metric-row">
+      <div>
+        <div class="metric-label">45s / 15s Sub-Threshold</div>
+        <div class="metric-sublabel">5K Race Pace</div>
+      </div>
+      <div class="metric-value">
+        <div class="metric-value-sub" id="pace45s15s">VDOT: --:-- /km</div>
+        <div class="metric-value-sub" id="pace45s15sAlt">Riegel: --:-- /km</div>
+      </div>
+    </div>
+
     <div class="metric-row">
       <div>
         <div class="metric-label">3-min Sub-Threshold</div>
         <div class="metric-sublabel">14K Race Pace</div>
       </div>
-      <div class="metric-value" id="pace3min">--:-- /km</div>
+      <div class="metric-value">
+        <div class="metric-value-sub" id="pace3min">VDOT: --:-- /km</div>
+        <div class="metric-value-sub" id="pace3minAlt">Riegel: --:-- /km</div>
+      </div>
     </div>
+
     <div class="metric-row">
       <div>
         <div class="metric-label">6-min Sub-Threshold</div>
         <div class="metric-sublabel">20K Race Pace</div>
       </div>
-      <div class="metric-value" id="pace6min">--:-- /km</div>
+      <div class="metric-value">
+        <div class="metric-value-sub" id="pace6min">VDOT: --:-- /km</div>
+        <div class="metric-value-sub" id="pace6minAlt">Riegel: --:-- /km</div>
+      </div>
     </div>
+
     <div class="metric-row">
       <div>
         <div class="metric-label">10-min Sub-Threshold</div>
         <div class="metric-sublabel">28K Race Pace</div>
       </div>
-      <div class="metric-value" id="pace10min">--:-- /km</div>
-    </div>
-    <div class="metric-row">
-      <div>
-        <div class="metric-label">Easy Run</div>
-        <div class="metric-sublabel" id="easyRangeLabel">Auto-derived from VO2max</div>
-      </div>
       <div class="metric-value">
-        <div id="paceEasyFast">--:-- /km</div>
-        <div id="paceEasySlow" style="margin-top: 2px;">--:-- /km</div>
+        <div class="metric-value-sub" id="pace10min">VDOT: --:-- /km</div>
+        <div class="metric-value-sub" id="pace10minAlt">Riegel: --:-- /km</div>
       </div>
     </div>
   </div>
@@ -317,90 +326,36 @@
     <div class="metric-sublabel" style="margin-bottom: 8px;">Under the same weather conditions as 2a</div>
     <div class="metric-row">
       <div class="metric-label">5K Predicted Time</div>
-      <div class="metric-value" id="pred5k">--:--:--</div>
+      <div class="metric-value">
+        <div class="metric-value-sub" id="pred5kVdot">VDOT: --:--:--</div>
+        <div class="metric-value-sub" id="pred5kRiegel">Riegel: --:--:--</div>
+      </div>
     </div>
     <div class="metric-row">
       <div class="metric-label">10K Predicted Time</div>
-      <div class="metric-value" id="pred10k">--:--:--</div>
+      <div class="metric-value">
+        <div class="metric-value-sub" id="pred10kVdot">VDOT: --:--:--</div>
+        <div class="metric-value-sub" id="pred10kRiegel">Riegel: --:--:--</div>
+      </div>
     </div>
     <div class="metric-row">
       <div class="metric-label">Half Marathon Predicted Time</div>
-      <div class="metric-value" id="predHm">--:--:--</div>
+      <div class="metric-value">
+        <div class="metric-value-sub" id="predHmVdot">VDOT: --:--:--</div>
+        <div class="metric-value-sub" id="predHmRiegel">Riegel: --:--:--</div>
+      </div>
     </div>
   </div>
 
-<script>
-    /**
-     * =========================================================================
-     * PHYSIOLOGICAL & ENVIRONMENTAL MODEL ARCHITECTURE DOCUMENTATION
-     * =========================================================================
-     *
-     * 1. AEROBIC CAPACITY & PACE EQUIVALENCY (Daniels VDOT Model):
-     *    - Reference: Daniels, J., & Gilbert, J. (1979). "Oxygen Power: Performance 
-     *      Tables and How to Use Them."
-     *    - Principle: VDOT represents an effective pseudo-VO2max that incorporates
-     *      both maximal oxygen uptake and running economy.
-     *    - Equation 1 (Oxygen Cost of Speed):
-     *        VO2(v) = -4.60 + 0.182258 * v + 0.000104 * v^2
-     *      where 'v' is running velocity in meters per minute.
-     *    - Equation 2 (Sustainable Fraction of VO2max over Time t):
-     *        %VO2max(t) = 0.8 + 0.1894393 * exp(-0.012778 * t) + 0.2989558 * exp(-0.1932605 * t)
-     *      where 't' is performance duration in minutes.
-     *    - Baseline VDOT = VO2(v) / %VO2max(t).
-     *
-     * 2. HEAT STRESS & DEGRADATION MODEL (WBGT & Mantzios Model):
-     *    - Reference: Mantzios, K., et al. (2021). "Effects of Weather Parameters 
-     *      on Endurance Running Performance: Discipline-specific Analysis of 
-     *      1258 Races." Medicine & Science in Sports & Exercise, 54(1), 153-161.
-     *    - Principle: Wet-Bulb Globe Temperature (WBGT) isolates thermodynamic strain
-     *      far better than dry-bulb air temperature alone by accounting for humidity,
-     *      convective cooling, and radiant solar energy.
-     *    - Humidity Proxy (Magnus-Tetens Formula):
-     *        RH = 100 * exp((17.625 * T_dp) / (243.04 + T_dp) - (17.625 * T_air) / (243.04 + T_air))
-     *    - Natural Wet-Bulb Temperature (Stull's Empirical Formula, 2011):
-     *        T_wb = T_air * atan(0.151977 * sqrt(RH + 8.313659)) + atan(T_air + RH) 
-     *               - atan(RH - 1.676331) + 0.00391838 * (RH^1.5) * atan(0.023101 * RH) - 4.686035
-     *    - Solar Radiative Offset (Globe Temperature T_g Proxy):
-     *        Overcast = +0.0°C | Partly Sunny = +1.5°C | Sunny = +3.0°C
-     *        T_g = T_air + Solar_Offset
-     *    - Outdoor WBGT Weighting (OSHA / ISO 7243):
-     *        WBGT = 0.7 * T_wb + 0.2 * T_g + 0.1 * T_air
-     *    - Performance Penalty Rate:
-     *        Optimal performance occurs at WBGT <= 15.0°C. Above 15.0°C, running pace 
-     *        degrades linearly at 0.35% per 1°C increase in WBGT:
-     *        Factor (F_heat) = 1.0 + max(0, WBGT - 15.0) * 0.0035
-     *
-     * 3. PHYSIOLOGICAL RATIONALE FOR SPECIFIC WORKOUT INTERVALS (per Bakken/Copeland
-     *    Norwegian sub-threshold method — anchors as stated in the book, not derived
-     *    from the Daniels %VO2max-vs-duration curve):
-     *    - 3-min Sub-Threshold (14K Race Pace):
-     *      Short rest between reps allows pace to sit closer to threshold without
-     *      excessive hydrogen ion accumulation destabilizing aerobic enzyme activity.
-     *    - 6-min Sub-Threshold (20K Race Pace):
-     *      Longer rep requires more margin below threshold; targets classical Lactate
-     *      Threshold (LT2) territory and MCT-mediated lactate shuttle efficiency.
-     *    - 10-min Sub-Threshold (28K Race Pace):
-     *      Longest rep, effort must stay clearly sub-threshold. Promotes lipid
-     *      oxidation economy, glycogen sparing, and structural fatigue resistance in
-     *      type I muscle fibers without eliciting significant autonomic nervous
-     *      system stress.
-     *    - LT1 / MAF / Easy Run Range (50-70% vVO2max):
-     *      Designed to operate strictly below the first lactate threshold (LT1 / MAF 180). 
-     *      Drives mitochondrial biogenesis (via p38 MAPK / PGC-1alpha pathways) and 
-     *      capillaries per fiber ratio while minimizing thermoregulatory strain.
-     * =========================================================================
-     */
-
-    const STORAGE_KEY = 'running_calc_inputs_v3';
+  <script>
+    const STORAGE_KEY = 'running_calc_inputs_v4';
+    const RIEGEL_EXPONENT = 1.06;
 
     const inputIds = [
       'ttDistance', 'ttHours', 'ttMinutes', 'ttSeconds', 'ttTemp', 'ttDew', 'ttSolar',
       'woTemp', 'woDew', 'woSolar'
     ];
 
-    /**
-     * Safely parses numerical input from DOM elements, falling back to default values.
-     */
     function getNum(id, defaultVal = 0) {
       const el = document.getElementById(id);
       if (!el) return defaultVal;
@@ -408,10 +363,6 @@
       return (isNaN(val) || el.value.trim() === '') ? defaultVal : val;
     }
 
-    /**
-     * Calculates Wet-Bulb Globe Temperature (WBGT) in °C using Stull's equation
-     * and Magnus relative humidity derivations.
-     */
     function calculateWBGT(tempC, dewPointC, solarCondition) {
       if (isNaN(tempC) || isNaN(dewPointC)) return 0;
       let rh = 100 * Math.exp((17.625 * dewPointC) / (243.04 + dewPointC) - (17.625 * tempC) / (243.04 + tempC));
@@ -425,21 +376,15 @@
       let solarOffset = 0.0;
       if (solarCondition === 'Partly Sunny') solarOffset = 1.5;
       else if (solarCondition === 'Sunny') solarOffset = 3.0;
-      
+
       const tg = tempC + solarOffset;
       return (0.7 * twb) + (0.2 * tg) + (0.1 * tempC);
     }
 
-    /**
-     * Computes pace slowdown multiplier based on Mantzios et al. (2021).
-     */
     function getHeatFactor(wbgt) {
       return 1.0 + Math.max(0, wbgt - 15.0) * 0.0035;
     }
 
-    /**
-     * Solves Jack Daniels' baseline VDOT equation for distance and duration.
-     */
     function calculateVDOT(distanceMeters, timeSeconds) {
       if (!distanceMeters || !timeSeconds || distanceMeters <= 0 || timeSeconds <= 0) return 0;
       const tMin = timeSeconds / 60.0;
@@ -449,10 +394,6 @@
       return vo2 / percentMax;
     }
 
-    /**
-     * Inverts the Daniels VDOT equation using a 40-step bisection search 
-     * to find target running velocity (m/min) for a given distance.
-     */
     function vdotVelocity(vdot, targetDistanceMeters) {
       if (!vdot || !targetDistanceMeters || vdot <= 0 || targetDistanceMeters <= 0) return 0;
       let lowV = 50.0, highV = 1000.0, midV = 0.0;
@@ -468,113 +409,64 @@
       return midV;
     }
 
-    /**
-     * Determines 100% vVO2max velocity (m/min) from a VDOT score.
-     */
-    function vdotVO2maxVelocity(vdot) {
-      if (!vdot || vdot <= 0) return 0;
-      const a = 0.000104;
-      const b = 0.182258;
-      const c = -(vdot + 4.60);
-      return (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a);
+    function riegelTime(anchorDistanceMeters, anchorTimeSeconds, targetDistanceMeters) {
+      if (!anchorDistanceMeters || !anchorTimeSeconds || !targetDistanceMeters) return 0;
+      if (anchorDistanceMeters <= 0 || anchorTimeSeconds <= 0 || targetDistanceMeters <= 0) return 0;
+      return anchorTimeSeconds * Math.pow(targetDistanceMeters / anchorDistanceMeters, RIEGEL_EXPONENT);
     }
 
-    /**
-     * Estimates LT1 (aerobic threshold / first lactate turn point) as a
-     * fraction of VO2max, as a function of VO2max itself.
-     *
-     * LT1 is NOT a fixed %VO2max — it rises with training status, and VO2max
-     * is a reasonable proxy for training status (few well-trained runners sit
-     * in the 30s, few beginners sit in the 60s+). This replaces manual
-     * "Beginner / Intermediate / Well-Trained" tier selection with a
-     * continuous, VDOT-driven estimate.
-     *
-     * Anchor points assembled from published ranges rather than a single
-     * regression equation (no one clean formula is agreed on in the
-     * literature):
-     *   - Untrained adults:        LT1 ~50-60% VO2max
-     *     (Iannetta et al. 2020, ~60% VO2max in healthy untrained adults)
-     *   - Recreational/trained:    LT1 ~65-75% VO2max
-     *     (Weltman et al. 1990, 83% VO2max in trained runners at the high end;
-     *      RunningWritings LT1 review, consensus mid-range)
-     *   - Elite endurance runners: LT1 ~75-85% VO2max
-     *     (Training4Endurance / peakvo2trainer summaries of the LT literature)
-     *
-     * VDOT (an effective VO2max, ml/kg/min) is used directly as the x-axis.
-     * Piecewise-linear interpolation between anchors; clamped outside range.
-     */
-    function estimateLT1Pct(vo2max) {
-      const anchors = [
-        [30, 0.50],
-        [40, 0.55],
-        [50, 0.62],
-        [60, 0.68],
-        [70, 0.74],
-        [80, 0.78]
-      ];
-      if (!vo2max || vo2max <= 0) return 0.60;
-      if (vo2max <= anchors[0][0]) return anchors[0][1];
-      if (vo2max >= anchors[anchors.length - 1][0]) return anchors[anchors.length - 1][1];
-      for (let i = 0; i < anchors.length - 1; i++) {
-        const [x0, y0] = anchors[i];
-        const [x1, y1] = anchors[i + 1];
-        if (vo2max >= x0 && vo2max <= x1) {
-          const frac = (vo2max - x0) / (x1 - x0);
-          return y0 + frac * (y1 - y0);
-        }
-      }
-      return 0.60;
+    function riegelVelocity(anchorDistanceMeters, anchorTimeSeconds, targetDistanceMeters) {
+      const t = riegelTime(anchorDistanceMeters, anchorTimeSeconds, targetDistanceMeters);
+      if (!t || t <= 0) return 0;
+      return targetDistanceMeters / (t / 60.0);
     }
 
-    /**
-     * Formats velocity into heat-adjusted mm:ss/km and km/h.
-     */
-    function formatPace(velocityMPerMin, heatFactor) {
-      if (!velocityMPerMin || velocityMPerMin <= 0 || isNaN(velocityMPerMin)) return "--:-- /km";
+    function formatPace(velocityMPerMin, heatFactor, prefix = "") {
+      if (!velocityMPerMin || velocityMPerMin <= 0 || isNaN(velocityMPerMin)) return `${prefix}--:-- /km`;
       const adjVelocity = velocityMPerMin / heatFactor;
       const totalSecPerKm = Math.round((1000 / adjVelocity) * 60);
       const kmh = (adjVelocity * 0.06).toFixed(1);
-      
+
       const m = Math.floor(totalSecPerKm / 60);
       const s = totalSecPerKm % 60;
       const mStr = String(m).padStart(2, '0');
       const sStr = String(s).padStart(2, '0');
-      
-      return `${mStr}:${sStr} /km (${kmh} km/h)`;
+
+      return `${prefix}${mStr}:${sStr} /km (${kmh} km/h)`;
     }
 
-    /**
-     * Formats duration into hh:mm:ss.
-     */
     function formatTime(totalSeconds) {
       if (!totalSeconds || totalSeconds <= 0 || isNaN(totalSeconds)) return "--:--:--";
       const roundedSec = Math.round(totalSeconds);
       const h = Math.floor(roundedSec / 3600);
       const m = Math.floor((roundedSec % 3600) / 60);
       const s = roundedSec % 60;
-      
+
       const hStr = String(h).padStart(2, '0');
       const mStr = String(m).padStart(2, '0');
       const sStr = String(s).padStart(2, '0');
-      
+
       return `${hStr}:${mStr}:${sStr}`;
     }
 
     function resetOutputFields() {
-      document.getElementById('pace3min').textContent = "--:-- /km";
-      document.getElementById('pace6min').textContent = "--:-- /km";
-      document.getElementById('pace10min').textContent = "--:-- /km";
-      document.getElementById('paceEasyFast').textContent = "--:-- /km";
-      document.getElementById('paceEasySlow').textContent = "--:-- /km";
-      document.getElementById('pred5k').textContent = "--:--:--";
-      document.getElementById('pred10k').textContent = "--:--:--";
-      document.getElementById('predHm').textContent = "--:--:--";
+      document.getElementById('pace45s15s').textContent = "VDOT: --:-- /km";
+      document.getElementById('pace45s15sAlt').textContent = "Riegel: --:-- /km";
+      document.getElementById('pace3min').textContent = "VDOT: --:-- /km";
+      document.getElementById('pace3minAlt').textContent = "Riegel: --:-- /km";
+      document.getElementById('pace6min').textContent = "VDOT: --:-- /km";
+      document.getElementById('pace6minAlt').textContent = "Riegel: --:-- /km";
+      document.getElementById('pace10min').textContent = "VDOT: --:-- /km";
+      document.getElementById('pace10minAlt').textContent = "Riegel: --:-- /km";
+
+      document.getElementById('pred5kVdot').textContent = "VDOT: --:--:--";
+      document.getElementById('pred5kRiegel').textContent = "Riegel: --:--:--";
+      document.getElementById('pred10kVdot').textContent = "VDOT: --:--:--";
+      document.getElementById('pred10kRiegel').textContent = "Riegel: --:--:--";
+      document.getElementById('predHmVdot').textContent = "VDOT: --:--:--";
+      document.getElementById('predHmRiegel').textContent = "Riegel: --:--:--";
     }
 
-    /**
-     * Main calculation pipeline. Executes state loading, VDOT heat normalization,
-     * target pace derivation, and race time projections.
-     */
     function recalculate() {
       const ttDistance = getNum('ttDistance', 5000);
       const ttHours = getNum('ttHours', 0);
@@ -590,72 +482,75 @@
 
       const ttTimeSec = (ttHours * 3600) + (ttMinutes * 60) + ttSeconds;
 
-      // Calculate environmental burdens
       const ttWbgt = calculateWBGT(ttTemp, ttDew, ttSolar);
       const ttHeatFactor = getHeatFactor(ttWbgt);
-      
+
       const woWbgt = calculateWBGT(woTemp, woDew, woSolar);
       const woHeatFactor = getHeatFactor(woWbgt);
 
-      // Normalize time trial back to ideal conditions (WBGT <= 15°C) to get true baseline VDOT
       const idealTtSec = ttTimeSec > 0 ? ttTimeSec / ttHeatFactor : 0;
       const idealVdot = calculateVDOT(ttDistance, idealTtSec);
 
-      // Update Environmental Summary
       document.getElementById('dispTtWbgt').textContent = `${ttWbgt.toFixed(1)} °C WBGT`;
       document.getElementById('dispVdot').textContent = idealVdot > 0 ? idealVdot.toFixed(1) : '0.0';
       document.getElementById('dispWoWbgt').textContent = `${woWbgt.toFixed(1)}`;
       const penaltyPct = ((woHeatFactor - 1.0) * 100).toFixed(1);
       document.getElementById('dispFactor').textContent = `+${penaltyPct}% slowdown`;
 
-      if (idealVdot <= 0) {
+      if (idealVdot <= 0 || ttDistance <= 0 || idealTtSec <= 0) {
         resetOutputFields();
         saveState();
         return;
       }
 
       // 1. Calculate Sub-Threshold Workout Paces
-      const v14k = vdotVelocity(idealVdot, 14000);
-      const v20k = vdotVelocity(idealVdot, 20000);
-      const v28k = vdotVelocity(idealVdot, 28000);
+      const v5kDaniels  = vdotVelocity(idealVdot, 5000);
+      const v14kDaniels = vdotVelocity(idealVdot, 14000);
+      const v20kDaniels = vdotVelocity(idealVdot, 20000);
+      const v28kDaniels = vdotVelocity(idealVdot, 28000);
 
-      document.getElementById('pace3min').textContent = formatPace(v14k, woHeatFactor);
-      document.getElementById('pace6min').textContent = formatPace(v20k, woHeatFactor);
-      document.getElementById('pace10min').textContent = formatPace(v28k, woHeatFactor);
+      const v5kRiegel  = riegelVelocity(ttDistance, idealTtSec, 5000);
+      const v14kRiegel = riegelVelocity(ttDistance, idealTtSec, 14000);
+      const v20kRiegel = riegelVelocity(ttDistance, idealTtSec, 20000);
+      const v28kRiegel = riegelVelocity(ttDistance, idealTtSec, 28000);
 
-      // 2. Calculate Easy / LT1 Pace Range — auto-derived from VO2max, not a manual tier
-      const lt1Pct = estimateLT1Pct(idealVdot);
-      const easyBandPct = 0.08; // width of the easy-run band sitting just below LT1
-      const maxPct = lt1Pct;
-      const minPct = Math.max(0.40, lt1Pct - easyBandPct);
+      document.getElementById('pace45s15s').textContent = formatPace(v5kDaniels, woHeatFactor, "VDOT: ");
+      document.getElementById('pace45s15sAlt').textContent = formatPace(v5kRiegel, woHeatFactor, "Riegel: ");
 
-      const vVo2max = vdotVO2maxVelocity(idealVdot);
-      const vEasyFast = vVo2max * maxPct;
-      const vEasySlow = vVo2max * minPct;
+      document.getElementById('pace3min').textContent = formatPace(v14kDaniels, woHeatFactor, "VDOT: ");
+      document.getElementById('pace3minAlt').textContent = formatPace(v14kRiegel, woHeatFactor, "Riegel: ");
 
-      document.getElementById('paceEasyFast').textContent = `${formatPace(vEasyFast, woHeatFactor)}`;
-      document.getElementById('paceEasySlow').textContent = `${formatPace(vEasySlow, woHeatFactor)}`;
-      document.getElementById('easyRangeLabel').textContent = `${(minPct*100).toFixed(0)}% - ${(maxPct*100).toFixed(0)}% VO2max`;
+      document.getElementById('pace6min').textContent = formatPace(v20kDaniels, woHeatFactor, "VDOT: ");
+      document.getElementById('pace6minAlt').textContent = formatPace(v20kRiegel, woHeatFactor, "Riegel: ");
 
-      // 3. Calculate Race Predictions under Target Workout WBGT
+      document.getElementById('pace10min').textContent = formatPace(v28kDaniels, woHeatFactor, "VDOT: ");
+      document.getElementById('pace10minAlt').textContent = formatPace(v28kRiegel, woHeatFactor, "Riegel: ");
+
+      // 2. Calculate Race Predictions under Target Workout WBGT
       const v5k = vdotVelocity(idealVdot, 5000);
       const v10k = vdotVelocity(idealVdot, 10000);
       const vHm = vdotVelocity(idealVdot, 21097.5);
 
-      const time5k = ((5000 / v5k) * woHeatFactor) * 60;
-      const time10k = ((10000 / v10k) * woHeatFactor) * 60;
-      const timeHm = ((21097.5 / vHm) * woHeatFactor) * 60;
+      const time5kVdot = ((5000 / v5k) * woHeatFactor) * 60;
+      const time10kVdot = ((10000 / v10k) * woHeatFactor) * 60;
+      const timeHmVdot = ((21097.5 / vHm) * woHeatFactor) * 60;
 
-      document.getElementById('pred5k').textContent = formatTime(time5k);
-      document.getElementById('pred10k').textContent = formatTime(time10k);
-      document.getElementById('predHm').textContent = formatTime(timeHm);
+      const time5kRiegel = riegelTime(ttDistance, idealTtSec, 5000) * woHeatFactor;
+      const time10kRiegel = riegelTime(ttDistance, idealTtSec, 10000) * woHeatFactor;
+      const timeHmRiegel = riegelTime(ttDistance, idealTtSec, 21097.5) * woHeatFactor;
+
+      document.getElementById('pred5kVdot').textContent = `VDOT: ${formatTime(time5kVdot)}`;
+      document.getElementById('pred5kRiegel').textContent = `Riegel: ${formatTime(time5kRiegel)}`;
+
+      document.getElementById('pred10kVdot').textContent = `VDOT: ${formatTime(time10kVdot)}`;
+      document.getElementById('pred10kRiegel').textContent = `Riegel: ${formatTime(time10kRiegel)}`;
+
+      document.getElementById('predHmVdot').textContent = `VDOT: ${formatTime(timeHmVdot)}`;
+      document.getElementById('predHmRiegel').textContent = `Riegel: ${formatTime(timeHmRiegel)}`;
 
       saveState();
     }
 
-    /**
-     * Persists input form state to browser LocalStorage.
-     */
     function saveState() {
       try {
         const data = {};
@@ -669,9 +564,6 @@
       }
     }
 
-    /**
-     * Restores input form state from browser LocalStorage.
-     */
     function loadState() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
@@ -688,9 +580,6 @@
       }
     }
 
-    /**
-     * Initializes app binding listeners and triggering initial calculation.
-     */
     function init() {
       loadState();
       recalculate();
