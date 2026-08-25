@@ -207,11 +207,11 @@
     <div class="grid-3">
       <div class="input-group no-margin">
         <label for="ttTemp">Temperature (&deg;C)</label>
-        <input type="number" id="ttTemp" inputmode="decimal" step="0.5" value="14.0" oninput="recalculate()" onchange="recalculate()">
+        <input type="number" id="ttTemp" inputmode="numeric" step="1" value="14" oninput="recalculate()" onchange="roundInputToInt('ttTemp'); recalculate()">
       </div>
       <div class="input-group no-margin">
         <label for="ttDew">Dew Pt (&deg;C)</label>
-        <input type="number" id="ttDew" inputmode="decimal" step="0.5" value="8.0" oninput="recalculate()" onchange="recalculate()">
+        <input type="number" id="ttDew" inputmode="numeric" step="1" value="8" oninput="recalculate()" onchange="roundInputToInt('ttDew'); recalculate()">
       </div>
       <div class="input-group no-margin">
         <label for="ttSolar">Sun Exposure</label>
@@ -227,15 +227,15 @@
 
     <div class="metric-row">
       <div>
-        <div class="metric-label">Time Trial Load</div>
-        <div class="metric-sublabel">Environment during TT</div>
+        <div class="metric-label">ITT Weather</div>
+        <div class="metric-sublabel">Weather Adjustment Factor</div>
       </div>
-      <div class="metric-value" id="dispTtWbgt">0.0 &deg;C WBGT</div>
+      <div class="metric-value"><span id="dispTtWbgt">0</span> &deg;C WBGT<br/>(<span id="dispTtFactor">+0.0%</span>)</div>
     </div>
     <div class="metric-row">
       <div>
         <div class="metric-label">Estimated VO2max (VDOT)</div>
-        <div class="metric-sublabel">Normalized to ideal conditions</div>
+        <div class="metric-sublabel">Normalized to ideal weather</div>
       </div>
       <div class="metric-value"><span class="badge" id="dispVdot">0.0</span></div>
     </div>
@@ -249,11 +249,11 @@
     <div class="grid-3">
       <div class="input-group no-margin">
         <label for="woTemp">Temperature (&deg;C)</label>
-        <input type="number" id="woTemp" inputmode="decimal" step="0.5" value="25.0" oninput="recalculate()" onchange="recalculate()">
+        <input type="number" id="woTemp" inputmode="numeric" step="1" value="25" oninput="recalculate()" onchange="roundInputToInt('woTemp'); recalculate()">
       </div>
       <div class="input-group no-margin">
         <label for="woDew">Dew Point (&deg;C)</label>
-        <input type="number" id="woDew" inputmode="decimal" step="0.5" value="18.0" oninput="recalculate()" onchange="recalculate()">
+        <input type="number" id="woDew" inputmode="numeric" step="1" value="18" oninput="recalculate()" onchange="roundInputToInt('woDew'); recalculate()">
       </div>
       <div class="input-group no-margin">
         <label for="woSolar">Sun Exposure</label>
@@ -269,10 +269,10 @@
 
     <div class="metric-row">
       <div>
-        <div class="metric-label">Training Environmental Load</div>
-        <div class="metric-sublabel">Heat penalty factor</div>
+        <div class="metric-label">Training Weather</div>
+        <div class="metric-sublabel">Weather Adjustment Factor</div>
       </div>
-      <div class="metric-value"><span id="dispWoWbgt">0.0</span> &deg;C WBGT<br/>(<span id="dispFactor">+0.0%</span>)</div>
+      <div class="metric-value"><span id="dispWoWbgt">0</span> &deg;C WBGT<br/>(<span id="dispFactor">+0.0%</span>)</div>
     </div>
 
     <div class="metric-row">
@@ -361,6 +361,13 @@
       if (!el) return defaultVal;
       const val = parseFloat(el.value);
       return (isNaN(val) || el.value.trim() === '') ? defaultVal : val;
+    }
+
+    function roundInputToInt(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const val = parseFloat(el.value);
+      if (!isNaN(val)) el.value = Math.round(val);
     }
 
     function calculateWBGT(tempC, dewPointC, solarCondition) {
@@ -472,12 +479,12 @@
       const ttHours = getNum('ttHours', 0);
       const ttMinutes = getNum('ttMinutes', 0);
       const ttSeconds = getNum('ttSeconds', 0);
-      const ttTemp = getNum('ttTemp', 14.0);
-      const ttDew = getNum('ttDew', 8.0);
+      const ttTemp = getNum('ttTemp', 14);
+      const ttDew = getNum('ttDew', 8);
       const ttSolar = document.getElementById('ttSolar').value;
 
-      const woTemp = getNum('woTemp', 25.0);
-      const woDew = getNum('woDew', 18.0);
+      const woTemp = getNum('woTemp', 25);
+      const woDew = getNum('woDew', 18);
       const woSolar = document.getElementById('woSolar').value;
 
       const ttTimeSec = (ttHours * 3600) + (ttMinutes * 60) + ttSeconds;
@@ -491,9 +498,11 @@
       const idealTtSec = ttTimeSec > 0 ? ttTimeSec / ttHeatFactor : 0;
       const idealVdot = calculateVDOT(ttDistance, idealTtSec);
 
-      document.getElementById('dispTtWbgt').textContent = `${ttWbgt.toFixed(1)} °C WBGT`;
+      document.getElementById('dispTtWbgt').textContent = `${Math.round(ttWbgt)}`;
+      const ttPenaltyPct = ((ttHeatFactor - 1.0) * 100).toFixed(1);
+      document.getElementById('dispTtFactor').textContent = `+${ttPenaltyPct}% slowdown`;
       document.getElementById('dispVdot').textContent = idealVdot > 0 ? idealVdot.toFixed(1) : '0.0';
-      document.getElementById('dispWoWbgt').textContent = `${woWbgt.toFixed(1)}`;
+      document.getElementById('dispWoWbgt').textContent = `${Math.round(woWbgt)}`;
       const penaltyPct = ((woHeatFactor - 1.0) * 100).toFixed(1);
       document.getElementById('dispFactor').textContent = `+${penaltyPct}% slowdown`;
 
