@@ -250,15 +250,6 @@
   <div class="card">
     <div class="subsection-label">Inputs</div>
 
-    <div class="input-group">
-      <label for="fitnessTier">Athlete Fitness Tier</label>
-      <select id="fitnessTier" onchange="recalculate()">
-        <option value="Beginner">Beginner (50% - 60% VO2max)</option>
-        <option value="Intermediate" selected>Intermediate (55% - 65% VO2max)</option>
-        <option value="Well-Trained">Well-Trained (60% - 70% VO2max)</option>
-      </select>
-    </div>
-
     <div class="grid-3">
       <div class="input-group no-margin">
         <label for="woTemp">Temperature (&deg;C)</label>
@@ -282,10 +273,10 @@
 
     <div class="metric-row">
       <div>
-        <div class="metric-label">Training Workout Load</div>
+        <div class="metric-label">Training Environmental Load</div>
         <div class="metric-sublabel">Heat penalty factor</div>
       </div>
-      <div class="metric-value"><span id="dispWoWbgt">0.0</span> &deg;C WBGT (<span id="dispFactor">+0.0%</span>)</div>
+      <div class="metric-value"><span id="dispWoWbgt">0.0</span> &deg;C WBGT<br/>(<span id="dispFactor">+0.0%</span>)</div>
     </div>
     <div class="metric-row">
       <div>
@@ -311,7 +302,7 @@
     <div class="metric-row">
       <div>
         <div class="metric-label">Easy Run</div>
-        <div class="metric-sublabel" id="easyRangeLabel">Tier Target Range</div>
+        <div class="metric-sublabel" id="easyRangeLabel">Auto-derived from VO2max</div>
       </div>
       <div class="metric-value">
         <div id="paceEasyFast">--:-- /km</div>
@@ -404,7 +395,7 @@
 
     const inputIds = [
       'ttDistance', 'ttHours', 'ttMinutes', 'ttSeconds', 'ttTemp', 'ttDew', 'ttSolar',
-      'fitnessTier', 'woTemp', 'woDew', 'woSolar'
+      'woTemp', 'woDew', 'woSolar'
     ];
 
     /**
@@ -489,6 +480,53 @@
     }
 
     /**
+     * Estimates LT1 (aerobic threshold / first lactate turn point) as a
+     * fraction of VO2max, as a function of VO2max itself.
+     *
+     * LT1 is NOT a fixed %VO2max — it rises with training status, and VO2max
+     * is a reasonable proxy for training status (few well-trained runners sit
+     * in the 30s, few beginners sit in the 60s+). This replaces manual
+     * "Beginner / Intermediate / Well-Trained" tier selection with a
+     * continuous, VDOT-driven estimate.
+     *
+     * Anchor points assembled from published ranges rather than a single
+     * regression equation (no one clean formula is agreed on in the
+     * literature):
+     *   - Untrained adults:        LT1 ~50-60% VO2max
+     *     (Iannetta et al. 2020, ~60% VO2max in healthy untrained adults)
+     *   - Recreational/trained:    LT1 ~65-75% VO2max
+     *     (Weltman et al. 1990, 83% VO2max in trained runners at the high end;
+     *      RunningWritings LT1 review, consensus mid-range)
+     *   - Elite endurance runners: LT1 ~75-85% VO2max
+     *     (Training4Endurance / peakvo2trainer summaries of the LT literature)
+     *
+     * VDOT (an effective VO2max, ml/kg/min) is used directly as the x-axis.
+     * Piecewise-linear interpolation between anchors; clamped outside range.
+     */
+    function estimateLT1Pct(vo2max) {
+      const anchors = [
+        [30, 0.50],
+        [40, 0.55],
+        [50, 0.62],
+        [60, 0.68],
+        [70, 0.74],
+        [80, 0.78]
+      ];
+      if (!vo2max || vo2max <= 0) return 0.60;
+      if (vo2max <= anchors[0][0]) return anchors[0][1];
+      if (vo2max >= anchors[anchors.length - 1][0]) return anchors[anchors.length - 1][1];
+      for (let i = 0; i < anchors.length - 1; i++) {
+        const [x0, y0] = anchors[i];
+        const [x1, y1] = anchors[i + 1];
+        if (vo2max >= x0 && vo2max <= x1) {
+          const frac = (vo2max - x0) / (x1 - x0);
+          return y0 + frac * (y1 - y0);
+        }
+      }
+      return 0.60;
+    }
+
+    /**
      * Formats velocity into heat-adjusted mm:ss/km and km/h.
      */
     function formatPace(velocityMPerMin, heatFactor) {
@@ -546,7 +584,6 @@
       const ttDew = getNum('ttDew', 8.0);
       const ttSolar = document.getElementById('ttSolar').value;
 
-      const fitnessTier = document.getElementById('fitnessTier').value;
       const woTemp = getNum('woTemp', 25.0);
       const woDew = getNum('woDew', 18.0);
       const woSolar = document.getElementById('woSolar').value;
@@ -586,10 +623,11 @@
       document.getElementById('pace6min').textContent = formatPace(v20k, woHeatFactor);
       document.getElementById('pace10min').textContent = formatPace(v28k, woHeatFactor);
 
-      // 2. Calculate LT1 / MAF / Easy Pace Range by Fitness Tier
-      let minPct = 0.55, maxPct = 0.65;
-      if (fitnessTier === 'Beginner') { minPct = 0.50; maxPct = 0.60; }
-      else if (fitnessTier === 'Well-Trained') { minPct = 0.60; maxPct = 0.70; }
+      // 2. Calculate Easy / LT1 Pace Range — auto-derived from VO2max, not a manual tier
+      const lt1Pct = estimateLT1Pct(idealVdot);
+      const easyBandPct = 0.08; // width of the easy-run band sitting just below LT1
+      const maxPct = lt1Pct;
+      const minPct = Math.max(0.40, lt1Pct - easyBandPct);
 
       const vVo2max = vdotVO2maxVelocity(idealVdot);
       const vEasyFast = vVo2max * maxPct;
@@ -597,7 +635,7 @@
 
       document.getElementById('paceEasyFast').textContent = `${formatPace(vEasyFast, woHeatFactor)}`;
       document.getElementById('paceEasySlow').textContent = `${formatPace(vEasySlow, woHeatFactor)}`;
-      document.getElementById('easyRangeLabel').textContent = `${(minPct*100).toFixed(0)}% - ${(maxPct*100).toFixed(0)}% vVO2max`;
+      document.getElementById('easyRangeLabel').textContent = `${(minPct*100).toFixed(0)}% - ${(maxPct*100).toFixed(0)}% VO2max`;
 
       // 3. Calculate Race Predictions under Target Workout WBGT
       const v5k = vdotVelocity(idealVdot, 5000);
