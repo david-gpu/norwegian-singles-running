@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Heat-Adjusted Running Calculator</title>
+  <style>
+    :root {
+      --bg: #121212;
+      --card-bg: #1e1e1e;
+      --accent: #3b82f6;
+      --text: #e0e0e0;
+      --text-dim: #a0a0a0;
+      --border: #333333;
+      --input-bg: #2a2a2a;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 12px;
+      max-width: 600px;
+      margin: 0 auto;
+      padding-bottom: 32px;
+    }
+
+    h1 {
+      font-size: 1.2rem;
+      text-align: center;
+      margin-bottom: 14px;
+      color: var(--accent);
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+      color: var(--accent);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 4px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 8px;
+    }
+
+    .input-group.no-margin {
+      margin-bottom: 0;
+    }
+
+    label {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      margin-bottom: 3px;
+    }
+
+    input, select {
+      background-color: var(--input-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      width: 100%;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .time-inputs {
+      display: flex;
+      gap: 2px;
+      align-items: center;
+    }
+
+    .time-inputs input {
+      text-align: center;
+      padding: 8px 4px;
+    }
+
+    .time-inputs span {
+      color: var(--text-dim);
+      font-size: 0.75rem;
+    }
+
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .metric-row:last-child {
+      border-bottom: none;
+    }
+
+    .metric-label {
+      font-size: 0.82rem;
+    }
+
+    .metric-sublabel {
+      font-size: 0.68rem;
+      color: var(--text-dim);
+    }
+
+    .metric-value {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #ffffff;
+      text-align: right;
+    }
+
+    .section-heading {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text);
+      margin: 20px 0 8px;
+    }
+
+    .section-heading:first-of-type {
+      margin-top: 4px;
+    }
+
+    .subsection-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-dim);
+      margin: 2px 0 8px;
+    }
+
+    .subsection-label.output-label {
+      margin-top: 14px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--border);
+      color: var(--accent);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      background-color: #264653;
+      color: #e9c46a;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Heat-Adjusted Running Calculator</h1>
+
+  <!-- ===================== SECTION 1: TIME TRIAL (ITT) ===================== -->
+  <div class="section-heading">1 &middot; Individual Time Trial Race</div>
+  <div class="card">
+    <div class="subsection-label">Inputs</div>
+
+    <div class="grid-2">
+      <div class="input-group">
+        <label for="ttDistance">Distance (m)</label>
+        <input type="number" id="ttDistance" inputmode="numeric" value="5000" oninput="recalculate()" onchange="recalculate()">
+      </div>
+
+      <div class="input-group">
+        <label>Time (HH : MM : SS)</label>
+        <div class="time-inputs">
+          <input type="number" id="ttHours" inputmode="numeric" placeholder="0" value="0" min="0" oninput="recalculate()" onchange="recalculate()">
+          <span>:</span>
+          <input type="number" id="ttMinutes" inputmode="numeric" placeholder="20" value="20" min="0" max="59" oninput="recalculate()" onchange="recalculate()">
+          <span>:</span>
+          <input type="number" id="ttSeconds" inputmode="numeric" placeholder="0" value="0" min="0" max="59" oninput="recalculate()" onchange="recalculate()">
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-3">
+      <div class="input-group no-margin">
+        <label for="ttTemp">Temperature (&deg;C)</label>
+        <input type="number" id="ttTemp" inputmode="decimal" step="0.5" value="14.0" oninput="recalculate()" onchange="recalculate()">
+      </div>
+      <div class="input-group no-margin">
+        <label for="ttDew">Dew Pt (&deg;C)</label>
+        <input type="number" id="ttDew" inputmode="decimal" step="0.5" value="8.0" oninput="recalculate()" onchange="recalculate()">
+      </div>
+      <div class="input-group no-margin">
+        <label for="ttSolar">Sun Exposure</label>
+        <select id="ttSolar" onchange="recalculate()">
+          <option value="Overcast">Overcast</option>
+          <option value="Partly Sunny" selected>Partly Sunny</option>
+          <option value="Sunny">Sunny</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="subsection-label output-label">Output</div>
+
+    <div class="metric-row">
+      <div>
+        <div class="metric-label">Time Trial Load</div>
+        <div class="metric-sublabel">Environment during TT</div>
+      </div>
+      <div class="metric-value" id="dispTtWbgt">0.0 &deg;C WBGT</div>
+    </div>
+    <div class="metric-row">
+      <div>
+        <div class="metric-label">Estimated VO2max (VDOT)</div>
+        <div class="metric-sublabel">Normalized to ideal conditions</div>
+      </div>
+      <div class="metric-value"><span class="badge" id="dispVdot">0.0</span></div>
+    </div>
+  </div>
+
+  <!-- ===================== SECTION 2A: TRAINING PACE TARGETS ===================== -->
+  <div class="section-heading">2a &middot; Training Pace Targets</div>
+  <div class="card">
+    <div class="subsection-label">Inputs</div>
+
+    <div class="input-group">
+      <label for="fitnessTier">Athlete Fitness Tier</label>
+      <select id="fitnessTier" onchange="recalculate()">
+        <option value="Beginner">Beginner (50% - 60% VO2max)</option>
+        <option value="Intermediate" selected>Intermediate (55% - 65% VO2max)</option>
+        <option value="Well-Trained">Well-Trained (60% - 70% VO2max)</option>
+      </select>
+    </div>
+
+    <div class="grid-3">
+      <div class="input-group no-margin">
+        <label for="woTemp">Temperature (&deg;C)</label>
+        <input type="number" id="woTemp" inputmode="decimal" step="0.5" value="25.0" oninput="recalculate()" onchange="recalculate()">
+      </div>
+      <div class="input-group no-margin">
+        <label for="woDew">Dew Point (&deg;C)</label>
+        <input type="number" id="woDew" inputmode="decimal" step="0.5" value="18.0" oninput="recalculate()" onchange="recalculate()">
+      </div>
+      <div class="input-group no-margin">
+        <label for="woSolar">Sun Exposure</label>
+        <select id="woSolar" onchange="recalculate()">
+          <option value="Overcast">Overcast</option>
+          <option value="Partly Sunny">Partly Sunny</option>
+          <option value="Sunny" selected>Sunny</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="subsection-label output-label">Output</div>
+
+    <div class="metric-row">
+      <div>
+        <div class="metric-label">Training Workout Load</div>
+        <div class="metric-sublabel">Heat penalty factor</div>
+      </div>
+      <div class="metric-value"><span id="dispWoWbgt">0.0</span> &deg;C WBGT (<span id="dispFactor">+0.0%</span>)</div>
+    </div>
+    <div class="metric-row">
+      <div>
+        <div class="metric-label">3-min Sub-Threshold</div>
+        <div class="metric-sublabel">14K Race Pace</div>
+      </div>
+      <div class="metric-value" id="pace3min">--:-- /km</div>
+    </div>
+    <div class="metric-row">
+      <div>
+        <div class="metric-label">6-min Sub-Threshold</div>
+        <div class="metric-sublabel">20K Race Pace</div>
+      </div>
+      <div class="metric-value" id="pace6min">--:-- /km</div>
+    </div>
+    <div class="metric-row">
+      <div>
+        <div class="metric-label">10-min Sub-Threshold</div>
+        <div class="metric-sublabel">28K Race Pace</div>
+      </div>
+      <div class="metric-value" id="pace10min">--:-- /km</div>
+    </div>
+    <div class="metric-row">
+      <div>
+        <div class="metric-label">Easy Run</div>
+        <div class="metric-sublabel" id="easyRangeLabel">Tier Target Range</div>
+      </div>
+      <div class="metric-value">
+        <div id="paceEasyFast">--:-- /km</div>
+        <div id="paceEasySlow" style="margin-top: 2px;">--:-- /km</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== SECTION 2B: RACE TIME PROJECTIONS ===================== -->
+  <div class="section-heading">2b &middot; Race Time Projections</div>
+  <div class="card">
+    <div class="metric-sublabel" style="margin-bottom: 8px;">Under the same weather conditions as 2a</div>
+    <div class="metric-row">
+      <div class="metric-label">5K Predicted Time</div>
+      <div class="metric-value" id="pred5k">--:--:--</div>
+    </div>
+    <div class="metric-row">
+      <div class="metric-label">10K Predicted Time</div>
+      <div class="metric-value" id="pred10k">--:--:--</div>
+    </div>
+    <div class="metric-row">
+      <div class="metric-label">Half Marathon Predicted Time</div>
+      <div class="metric-value" id="predHm">--:--:--</div>
+    </div>
+  </div>
+
+<script>
+    /**
+     * =========================================================================
+     * PHYSIOLOGICAL & ENVIRONMENTAL MODEL ARCHITECTURE DOCUMENTATION
+     * =========================================================================
+     *
+     * 1. AEROBIC CAPACITY & PACE EQUIVALENCY (Daniels VDOT Model):
+     *    - Reference: Daniels, J., & Gilbert, J. (1979). "Oxygen Power: Performance 
+     *      Tables and How to Use Them."
+     *    - Principle: VDOT represents an effective pseudo-VO2max that incorporates
+     *      both maximal oxygen uptake and running economy.
+     *    - Equation 1 (Oxygen Cost of Speed):
+     *        VO2(v) = -4.60 + 0.182258 * v + 0.000104 * v^2
+     *      where 'v' is running velocity in meters per minute.
+     *    - Equation 2 (Sustainable Fraction of VO2max over Time t):
+     *        %VO2max(t) = 0.8 + 0.1894393 * exp(-0.012778 * t) + 0.2989558 * exp(-0.1932605 * t)
+     *      where 't' is performance duration in minutes.
+     *    - Baseline VDOT = VO2(v) / %VO2max(t).
+     *
+     * 2. HEAT STRESS & DEGRADATION MODEL (WBGT & Mantzios Model):
+     *    - Reference: Mantzios, K., et al. (2021). "Effects of Weather Parameters 
+     *      on Endurance Running Performance: Discipline-specific Analysis of 
+     *      1258 Races." Medicine & Science in Sports & Exercise, 54(1), 153-161.
+     *    - Principle: Wet-Bulb Globe Temperature (WBGT) isolates thermodynamic strain
+     *      far better than dry-bulb air temperature alone by accounting for humidity,
+     *      convective cooling, and radiant solar energy.
+     *    - Humidity Proxy (Magnus-Tetens Formula):
+     *        RH = 100 * exp((17.625 * T_dp) / (243.04 + T_dp) - (17.625 * T_air) / (243.04 + T_air))
+     *    - Natural Wet-Bulb Temperature (Stull's Empirical Formula, 2011):
+     *        T_wb = T_air * atan(0.151977 * sqrt(RH + 8.313659)) + atan(T_air + RH) 
+     *               - atan(RH - 1.676331) + 0.00391838 * (RH^1.5) * atan(0.023101 * RH) - 4.686035
+     *    - Solar Radiative Offset (Globe Temperature T_g Proxy):
+     *        Overcast = +0.0°C | Partly Sunny = +1.5°C | Sunny = +3.0°C
+     *        T_g = T_air + Solar_Offset
+     *    - Outdoor WBGT Weighting (OSHA / ISO 7243):
+     *        WBGT = 0.7 * T_wb + 0.2 * T_g + 0.1 * T_air
+     *    - Performance Penalty Rate:
+     *        Optimal performance occurs at WBGT <= 15.0°C. Above 15.0°C, running pace 
+     *        degrades linearly at 0.35% per 1°C increase in WBGT:
+     *        Factor (F_heat) = 1.0 + max(0, WBGT - 15.0) * 0.0035
+     *
+     * 3. PHYSIOLOGICAL RATIONALE FOR SPECIFIC WORKOUT INTERVALS (per Bakken/Copeland
+     *    Norwegian sub-threshold method — anchors as stated in the book, not derived
+     *    from the Daniels %VO2max-vs-duration curve):
+     *    - 3-min Sub-Threshold (14K Race Pace):
+     *      Short rest between reps allows pace to sit closer to threshold without
+     *      excessive hydrogen ion accumulation destabilizing aerobic enzyme activity.
+     *    - 6-min Sub-Threshold (20K Race Pace):
+     *      Longer rep requires more margin below threshold; targets classical Lactate
+     *      Threshold (LT2) territory and MCT-mediated lactate shuttle efficiency.
+     *    - 10-min Sub-Threshold (28K Race Pace):
+     *      Longest rep, effort must stay clearly sub-threshold. Promotes lipid
+     *      oxidation economy, glycogen sparing, and structural fatigue resistance in
+     *      type I muscle fibers without eliciting significant autonomic nervous
+     *      system stress.
+     *    - LT1 / MAF / Easy Run Range (50-70% vVO2max):
+     *      Designed to operate strictly below the first lactate threshold (LT1 / MAF 180). 
+     *      Drives mitochondrial biogenesis (via p38 MAPK / PGC-1alpha pathways) and 
+     *      capillaries per fiber ratio while minimizing thermoregulatory strain.
+     * =========================================================================
+     */
+
+    const STORAGE_KEY = 'running_calc_inputs_v3';
+
+    const inputIds = [
+      'ttDistance', 'ttHours', 'ttMinutes', 'ttSeconds', 'ttTemp', 'ttDew', 'ttSolar',
+      'fitnessTier', 'woTemp', 'woDew', 'woSolar'
+    ];
+
+    /**
+     * Safely parses numerical input from DOM elements, falling back to default values.
+     */
+    function getNum(id, defaultVal = 0) {
+      const el = document.getElementById(id);
+      if (!el) return defaultVal;
+      const val = parseFloat(el.value);
+      return (isNaN(val) || el.value.trim() === '') ? defaultVal : val;
+    }
+
+    /**
+     * Calculates Wet-Bulb Globe Temperature (WBGT) in °C using Stull's equation
+     * and Magnus relative humidity derivations.
+     */
+    function calculateWBGT(tempC, dewPointC, solarCondition) {
+      if (isNaN(tempC) || isNaN(dewPointC)) return 0;
+      let rh = 100 * Math.exp((17.625 * dewPointC) / (243.04 + dewPointC) - (17.625 * tempC) / (243.04 + tempC));
+      rh = Math.min(100, Math.max(1, rh));
+
+      const twb = tempC * Math.atan(0.151977 * Math.sqrt(rh + 8.313659)) +
+                  Math.atan(tempC + rh) -
+                  Math.atan(rh - 1.676331) +
+                  0.00391838 * Math.pow(rh, 1.5) * Math.atan(0.023101 * rh) -
+                  4.686035;
+      let solarOffset = 0.0;
+      if (solarCondition === 'Partly Sunny') solarOffset = 1.5;
+      else if (solarCondition === 'Sunny') solarOffset = 3.0;
+      
+      const tg = tempC + solarOffset;
+      return (0.7 * twb) + (0.2 * tg) + (0.1 * tempC);
+    }
+
+    /**
+     * Computes pace slowdown multiplier based on Mantzios et al. (2021).
+     */
+    function getHeatFactor(wbgt) {
+      return 1.0 + Math.max(0, wbgt - 15.0) * 0.0035;
+    }
+
+    /**
+     * Solves Jack Daniels' baseline VDOT equation for distance and duration.
+     */
+    function calculateVDOT(distanceMeters, timeSeconds) {
+      if (!distanceMeters || !timeSeconds || distanceMeters <= 0 || timeSeconds <= 0) return 0;
+      const tMin = timeSeconds / 60.0;
+      const v = distanceMeters / tMin;
+      const vo2 = -4.60 + (0.182258 * v) + (0.000104 * Math.pow(v, 2));
+      const percentMax = 0.8 + (0.1894393 * Math.exp(-0.012778 * tMin)) + (0.2989558 * Math.exp(-0.1932605 * tMin));
+      return vo2 / percentMax;
+    }
+
+    /**
+     * Inverts the Daniels VDOT equation using a 40-step bisection search 
+     * to find target running velocity (m/min) for a given distance.
+     */
+    function vdotVelocity(vdot, targetDistanceMeters) {
+      if (!vdot || !targetDistanceMeters || vdot <= 0 || targetDistanceMeters <= 0) return 0;
+      let lowV = 50.0, highV = 1000.0, midV = 0.0;
+      for (let i = 0; i < 40; i++) {
+        midV = (lowV + highV) / 2.0;
+        const tMin = targetDistanceMeters / midV;
+        const vo2 = -4.60 + (0.182258 * midV) + (0.000104 * Math.pow(midV, 2));
+        const percentMax = 0.8 + (0.1894393 * Math.exp(-0.012778 * tMin)) + (0.2989558 * Math.exp(-0.1932605 * tMin));
+        const calcVdot = vo2 / percentMax;
+        if (calcVdot < vdot) lowV = midV;
+        else highV = midV;
+      }
+      return midV;
+    }
+
+    /**
+     * Determines 100% vVO2max velocity (m/min) from a VDOT score.
+     */
+    function vdotVO2maxVelocity(vdot) {
+      if (!vdot || vdot <= 0) return 0;
+      const a = 0.000104;
+      const b = 0.182258;
+      const c = -(vdot + 4.60);
+      return (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a);
+    }
+
+    /**
+     * Formats velocity into heat-adjusted mm:ss/km and km/h.
+     */
+    function formatPace(velocityMPerMin, heatFactor) {
+      if (!velocityMPerMin || velocityMPerMin <= 0 || isNaN(velocityMPerMin)) return "--:-- /km";
+      const adjVelocity = velocityMPerMin / heatFactor;
+      const totalSecPerKm = Math.round((1000 / adjVelocity) * 60);
+      const kmh = (adjVelocity * 0.06).toFixed(1);
+      
+      const m = Math.floor(totalSecPerKm / 60);
+      const s = totalSecPerKm % 60;
+      const mStr = String(m).padStart(2, '0');
+      const sStr = String(s).padStart(2, '0');
+      
+      return `${mStr}:${sStr} /km (${kmh} km/h)`;
+    }
+
+    /**
+     * Formats duration into hh:mm:ss.
+     */
+    function formatTime(totalSeconds) {
+      if (!totalSeconds || totalSeconds <= 0 || isNaN(totalSeconds)) return "--:--:--";
+      const roundedSec = Math.round(totalSeconds);
+      const h = Math.floor(roundedSec / 3600);
+      const m = Math.floor((roundedSec % 3600) / 60);
+      const s = roundedSec % 60;
+      
+      const hStr = String(h).padStart(2, '0');
+      const mStr = String(m).padStart(2, '0');
+      const sStr = String(s).padStart(2, '0');
+      
+      return `${hStr}:${mStr}:${sStr}`;
+    }
+
+    function resetOutputFields() {
+      document.getElementById('pace3min').textContent = "--:-- /km";
+      document.getElementById('pace6min').textContent = "--:-- /km";
+      document.getElementById('pace10min').textContent = "--:-- /km";
+      document.getElementById('paceEasyFast').textContent = "--:-- /km";
+      document.getElementById('paceEasySlow').textContent = "--:-- /km";
+      document.getElementById('pred5k').textContent = "--:--:--";
+      document.getElementById('pred10k').textContent = "--:--:--";
+      document.getElementById('predHm').textContent = "--:--:--";
+    }
+
+    /**
+     * Main calculation pipeline. Executes state loading, VDOT heat normalization,
+     * target pace derivation, and race time projections.
+     */
+    function recalculate() {
+      const ttDistance = getNum('ttDistance', 5000);
+      const ttHours = getNum('ttHours', 0);
+      const ttMinutes = getNum('ttMinutes', 0);
+      const ttSeconds = getNum('ttSeconds', 0);
+      const ttTemp = getNum('ttTemp', 14.0);
+      const ttDew = getNum('ttDew', 8.0);
+      const ttSolar = document.getElementById('ttSolar').value;
+
+      const fitnessTier = document.getElementById('fitnessTier').value;
+      const woTemp = getNum('woTemp', 25.0);
+      const woDew = getNum('woDew', 18.0);
+      const woSolar = document.getElementById('woSolar').value;
+
+      const ttTimeSec = (ttHours * 3600) + (ttMinutes * 60) + ttSeconds;
+
+      // Calculate environmental burdens
+      const ttWbgt = calculateWBGT(ttTemp, ttDew, ttSolar);
+      const ttHeatFactor = getHeatFactor(ttWbgt);
+      
+      const woWbgt = calculateWBGT(woTemp, woDew, woSolar);
+      const woHeatFactor = getHeatFactor(woWbgt);
+
+      // Normalize time trial back to ideal conditions (WBGT <= 15°C) to get true baseline VDOT
+      const idealTtSec = ttTimeSec > 0 ? ttTimeSec / ttHeatFactor : 0;
+      const idealVdot = calculateVDOT(ttDistance, idealTtSec);
+
+      // Update Environmental Summary
+      document.getElementById('dispTtWbgt').textContent = `${ttWbgt.toFixed(1)} °C WBGT`;
+      document.getElementById('dispVdot').textContent = idealVdot > 0 ? idealVdot.toFixed(1) : '0.0';
+      document.getElementById('dispWoWbgt').textContent = `${woWbgt.toFixed(1)}`;
+      const penaltyPct = ((woHeatFactor - 1.0) * 100).toFixed(1);
+      document.getElementById('dispFactor').textContent = `+${penaltyPct}% slowdown`;
+
+      if (idealVdot <= 0) {
+        resetOutputFields();
+        saveState();
+        return;
+      }
+
+      // 1. Calculate Sub-Threshold Workout Paces
+      const v14k = vdotVelocity(idealVdot, 14000);
+      const v20k = vdotVelocity(idealVdot, 20000);
+      const v28k = vdotVelocity(idealVdot, 28000);
+
+      document.getElementById('pace3min').textContent = formatPace(v14k, woHeatFactor);
+      document.getElementById('pace6min').textContent = formatPace(v20k, woHeatFactor);
+      document.getElementById('pace10min').textContent = formatPace(v28k, woHeatFactor);
+
+      // 2. Calculate LT1 / MAF / Easy Pace Range by Fitness Tier
+      let minPct = 0.55, maxPct = 0.65;
+      if (fitnessTier === 'Beginner') { minPct = 0.50; maxPct = 0.60; }
+      else if (fitnessTier === 'Well-Trained') { minPct = 0.60; maxPct = 0.70; }
+
+      const vVo2max = vdotVO2maxVelocity(idealVdot);
+      const vEasyFast = vVo2max * maxPct;
+      const vEasySlow = vVo2max * minPct;
+
+      document.getElementById('paceEasyFast').textContent = `${formatPace(vEasyFast, woHeatFactor)}`;
+      document.getElementById('paceEasySlow').textContent = `${formatPace(vEasySlow, woHeatFactor)}`;
+      document.getElementById('easyRangeLabel').textContent = `${(minPct*100).toFixed(0)}% - ${(maxPct*100).toFixed(0)}% vVO2max`;
+
+      // 3. Calculate Race Predictions under Target Workout WBGT
+      const v5k = vdotVelocity(idealVdot, 5000);
+      const v10k = vdotVelocity(idealVdot, 10000);
+      const vHm = vdotVelocity(idealVdot, 21097.5);
+
+      const time5k = ((5000 / v5k) * woHeatFactor) * 60;
+      const time10k = ((10000 / v10k) * woHeatFactor) * 60;
+      const timeHm = ((21097.5 / vHm) * woHeatFactor) * 60;
+
+      document.getElementById('pred5k').textContent = formatTime(time5k);
+      document.getElementById('pred10k').textContent = formatTime(time10k);
+      document.getElementById('predHm').textContent = formatTime(timeHm);
+
+      saveState();
+    }
+
+    /**
+     * Persists input form state to browser LocalStorage.
+     */
+    function saveState() {
+      try {
+        const data = {};
+        inputIds.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) data[id] = el.value;
+        });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      } catch (e) {
+        console.error('LocalStorage write error', e);
+      }
+    }
+
+    /**
+     * Restores input form state from browser LocalStorage.
+     */
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        inputIds.forEach(id => {
+          if (data[id] !== undefined && data[id] !== null && data[id] !== "") {
+            const el = document.getElementById(id);
+            if (el) el.value = data[id];
+          }
+        });
+      } catch (e) {
+        console.error('LocalStorage read error', e);
+      }
+    }
+
+    /**
+     * Initializes app binding listeners and triggering initial calculation.
+     */
+    function init() {
+      loadState();
+      recalculate();
+
+      inputIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.addEventListener('input', recalculate);
+          el.addEventListener('change', recalculate);
+          el.addEventListener('keyup', recalculate);
+        }
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  </script>
+</body>
+</html>
