@@ -325,21 +325,21 @@
   <div class="card">
     <div class="metric-sublabel" style="margin-bottom: 8px;">Under the same weather conditions as 2a</div>
     <div class="metric-row">
-      <div class="metric-label">5K Predicted Time</div>
+      <div class="metric-label">5K</div>
       <div class="metric-value">
         <div class="metric-value-sub" id="pred5kVdot">VDOT: --:--:--</div>
         <div class="metric-value-sub" id="pred5kRiegel">Riegel: --:--:--</div>
       </div>
     </div>
     <div class="metric-row">
-      <div class="metric-label">10K Predicted Time</div>
+      <div class="metric-label">10K</div>
       <div class="metric-value">
         <div class="metric-value-sub" id="pred10kVdot">VDOT: --:--:--</div>
         <div class="metric-value-sub" id="pred10kRiegel">Riegel: --:--:--</div>
       </div>
     </div>
     <div class="metric-row">
-      <div class="metric-label">Half Marathon Predicted Time</div>
+      <div class="metric-label">Half Marathon</div>
       <div class="metric-value">
         <div class="metric-value-sub" id="predHmVdot">VDOT: --:--:--</div>
         <div class="metric-value-sub" id="predHmRiegel">Riegel: --:--:--</div>
@@ -432,14 +432,22 @@
       if (!velocityMPerMin || velocityMPerMin <= 0 || isNaN(velocityMPerMin)) return `${prefix}--:-- /km`;
       const adjVelocity = velocityMPerMin / heatFactor;
       const totalSecPerKm = Math.round((1000 / adjVelocity) * 60);
-      const kmh = (adjVelocity * 0.06).toFixed(1);
 
       const m = Math.floor(totalSecPerKm / 60);
       const s = totalSecPerKm % 60;
       const mStr = String(m).padStart(2, '0');
       const sStr = String(s).padStart(2, '0');
 
-      return `${prefix}${mStr}:${sStr} /km (${kmh} km/h)`;
+      return `${prefix}${mStr}:${sStr} /km`;
+    }
+
+    function paceFromTime(totalSeconds, distanceMeters) {
+      if (!totalSeconds || totalSeconds <= 0 || !distanceMeters || distanceMeters <= 0 || isNaN(totalSeconds)) return "--:--";
+      const secPerKm = totalSeconds / (distanceMeters / 1000);
+      let m = Math.floor(secPerKm / 60);
+      let s = Math.round(secPerKm % 60);
+      if (s === 60) { m += 1; s = 0; }
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     }
 
     function formatTime(totalSeconds) {
@@ -466,12 +474,12 @@
       document.getElementById('pace10min').textContent = "VDOT: --:-- /km";
       document.getElementById('pace10minAlt').textContent = "Riegel: --:-- /km";
 
-      document.getElementById('pred5kVdot').textContent = "VDOT: --:--:--";
-      document.getElementById('pred5kRiegel').textContent = "Riegel: --:--:--";
-      document.getElementById('pred10kVdot').textContent = "VDOT: --:--:--";
-      document.getElementById('pred10kRiegel').textContent = "Riegel: --:--:--";
-      document.getElementById('predHmVdot').textContent = "VDOT: --:--:--";
-      document.getElementById('predHmRiegel').textContent = "Riegel: --:--:--";
+      document.getElementById('pred5kVdot').textContent = "VDOT: --:--:-- (--:-- /km)";
+      document.getElementById('pred5kRiegel').textContent = "Riegel: --:--:-- (--:-- /km)";
+      document.getElementById('pred10kVdot').textContent = "VDOT: --:--:-- (--:-- /km)";
+      document.getElementById('pred10kRiegel').textContent = "Riegel: --:--:-- (--:-- /km)";
+      document.getElementById('predHmVdot').textContent = "VDOT: --:--:-- (--:-- /km)";
+      document.getElementById('predHmRiegel').textContent = "Riegel: --:--:-- (--:-- /km)";
     }
 
     function recalculate() {
@@ -548,14 +556,14 @@
       const time10kRiegel = riegelTime(ttDistance, idealTtSec, 10000) * woHeatFactor;
       const timeHmRiegel = riegelTime(ttDistance, idealTtSec, 21097.5) * woHeatFactor;
 
-      document.getElementById('pred5kVdot').textContent = `VDOT: ${formatTime(time5kVdot)}`;
-      document.getElementById('pred5kRiegel').textContent = `Riegel: ${formatTime(time5kRiegel)}`;
+      document.getElementById('pred5kVdot').textContent = `VDOT: ${formatTime(time5kVdot)} (${paceFromTime(time5kVdot, 5000)} /km)`;
+      document.getElementById('pred5kRiegel').textContent = `Riegel: ${formatTime(time5kRiegel)} (${paceFromTime(time5kRiegel, 5000)} /km)`;
 
-      document.getElementById('pred10kVdot').textContent = `VDOT: ${formatTime(time10kVdot)}`;
-      document.getElementById('pred10kRiegel').textContent = `Riegel: ${formatTime(time10kRiegel)}`;
+      document.getElementById('pred10kVdot').textContent = `VDOT: ${formatTime(time10kVdot)} (${paceFromTime(time10kVdot, 10000)} /km)`;
+      document.getElementById('pred10kRiegel').textContent = `Riegel: ${formatTime(time10kRiegel)} (${paceFromTime(time10kRiegel, 10000)} /km)`;
 
-      document.getElementById('predHmVdot').textContent = `VDOT: ${formatTime(timeHmVdot)}`;
-      document.getElementById('predHmRiegel').textContent = `Riegel: ${formatTime(timeHmRiegel)}`;
+      document.getElementById('predHmVdot').textContent = `VDOT: ${formatTime(timeHmVdot)} (${paceFromTime(timeHmVdot, 21097.5)} /km)`;
+      document.getElementById('predHmRiegel').textContent = `Riegel: ${formatTime(timeHmRiegel)} (${paceFromTime(timeHmRiegel, 21097.5)} /km)`;
 
       saveState();
     }
