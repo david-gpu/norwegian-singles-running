@@ -288,7 +288,18 @@
 
     <div class="metric-row">
       <div>
-        <div class="metric-label">3-min Sub-Threshold</div>
+        <div class="metric-label">90s / 30s Sub-Threshold</div>
+        <div class="metric-sublabel">10K Race Pace</div>
+      </div>
+      <div class="metric-value">
+        <div class="metric-value-sub" id="pace90s">VDOT: --:-- /km</div>
+        <div class="metric-value-sub" id="pace90sAlt">Riegel: --:-- /km</div>
+      </div>
+    </div>
+
+    <div class="metric-row">
+      <div>
+        <div class="metric-label">3min / 60s Sub-Threshold</div>
         <div class="metric-sublabel">14K Race Pace</div>
       </div>
       <div class="metric-value">
@@ -299,7 +310,7 @@
 
     <div class="metric-row">
       <div>
-        <div class="metric-label">6-min Sub-Threshold</div>
+        <div class="metric-label">6min / 75s Sub-Threshold</div>
         <div class="metric-sublabel">20K Race Pace</div>
       </div>
       <div class="metric-value">
@@ -310,12 +321,23 @@
 
     <div class="metric-row">
       <div>
-        <div class="metric-label">10-min Sub-Threshold</div>
+        <div class="metric-label">10min / 2min Sub-Threshold</div>
         <div class="metric-sublabel">28K Race Pace</div>
       </div>
       <div class="metric-value">
         <div class="metric-value-sub" id="pace10min">VDOT: --:-- /km</div>
         <div class="metric-value-sub" id="pace10minAlt">Riegel: --:-- /km</div>
+      </div>
+    </div>
+
+    <div class="metric-row">
+      <div>
+        <div class="metric-label">20min / 4min Sub-Threshold</div>
+        <div class="metric-sublabel">Marathon Race Pace</div>
+      </div>
+      <div class="metric-value">
+        <div class="metric-value-sub" id="pace20min">VDOT: --:-- /km</div>
+        <div class="metric-value-sub" id="pace20minAlt">Riegel: --:-- /km</div>
       </div>
     </div>
   </div>
@@ -467,12 +489,17 @@
     function resetOutputFields() {
       document.getElementById('pace45s15s').textContent = "VDOT: --:-- /km";
       document.getElementById('pace45s15sAlt').textContent = "Riegel: --:-- /km";
+      document.getElementById('pace90s').textContent = "VDOT: --:-- /km";
+      document.getElementById('pace90sAlt').textContent = "Riegel: --:-- /km";
       document.getElementById('pace3min').textContent = "VDOT: --:-- /km";
       document.getElementById('pace3minAlt').textContent = "Riegel: --:-- /km";
       document.getElementById('pace6min').textContent = "VDOT: --:-- /km";
       document.getElementById('pace6minAlt').textContent = "Riegel: --:-- /km";
       document.getElementById('pace10min').textContent = "VDOT: --:-- /km";
       document.getElementById('pace10minAlt').textContent = "Riegel: --:-- /km";
+
+      document.getElementById('pace20min').textContent = "VDOT: --:-- /km";
+      document.getElementById('pace20minAlt').textContent = "Riegel: --:-- /km";
 
       document.getElementById('pred5kVdot').textContent = "VDOT: --:--:-- (--:-- /km)";
       document.getElementById('pred5kRiegel').textContent = "Riegel: --:--:-- (--:-- /km)";
@@ -522,17 +549,24 @@
 
       // 1. Calculate Sub-Threshold Workout Paces
       const v5kDaniels  = vdotVelocity(idealVdot, 5000);
+      const v10kDaniels = vdotVelocity(idealVdot, 10000);
       const v14kDaniels = vdotVelocity(idealVdot, 14000);
       const v20kDaniels = vdotVelocity(idealVdot, 20000);
       const v28kDaniels = vdotVelocity(idealVdot, 28000);
+      const vMarathonDaniels = vdotVelocity(idealVdot, 42195);
 
       const v5kRiegel  = riegelVelocity(ttDistance, idealTtSec, 5000);
+      const v10kRiegel = riegelVelocity(ttDistance, idealTtSec, 10000);
       const v14kRiegel = riegelVelocity(ttDistance, idealTtSec, 14000);
       const v20kRiegel = riegelVelocity(ttDistance, idealTtSec, 20000);
       const v28kRiegel = riegelVelocity(ttDistance, idealTtSec, 28000);
+      const vMarathonRiegel = riegelVelocity(ttDistance, idealTtSec, 42195);
 
       document.getElementById('pace45s15s').textContent = formatPace(v5kDaniels, woHeatFactor, "VDOT: ");
       document.getElementById('pace45s15sAlt').textContent = formatPace(v5kRiegel, woHeatFactor, "Riegel: ");
+
+      document.getElementById('pace90s').textContent = formatPace(v10kDaniels, woHeatFactor, "VDOT: ");
+      document.getElementById('pace90sAlt').textContent = formatPace(v10kRiegel, woHeatFactor, "Riegel: ");
 
       document.getElementById('pace3min').textContent = formatPace(v14kDaniels, woHeatFactor, "VDOT: ");
       document.getElementById('pace3minAlt').textContent = formatPace(v14kRiegel, woHeatFactor, "Riegel: ");
@@ -542,6 +576,9 @@
 
       document.getElementById('pace10min').textContent = formatPace(v28kDaniels, woHeatFactor, "VDOT: ");
       document.getElementById('pace10minAlt').textContent = formatPace(v28kRiegel, woHeatFactor, "Riegel: ");
+
+      document.getElementById('pace20min').textContent = formatPace(vMarathonDaniels, woHeatFactor, "VDOT: ");
+      document.getElementById('pace20minAlt').textContent = formatPace(vMarathonRiegel, woHeatFactor, "Riegel: ");
 
       // 2. Calculate Race Predictions under Target Workout WBGT
       const v5k = vdotVelocity(idealVdot, 5000);
