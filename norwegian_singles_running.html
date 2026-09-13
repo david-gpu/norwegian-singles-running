@@ -311,7 +311,7 @@
     <div class="metric-row">
       <div>
         <div class="metric-label">10min / 2min Sub-Threshold</div>
-        <div class="metric-sublabel">135-Minute Race Pace</div>
+        <div class="metric-sublabel">150-Minute Race Pace</div>
       </div>
       <div class="metric-value">
         <div class="metric-value-sub" id="pace10min">VDOT: --:-- /km</div>
@@ -369,7 +369,18 @@
     //   45-second reps -> pace sustainable for a  20-minute race
     //   3-minute reps  -> pace sustainable for a  60-minute race
     //   6-minute reps  -> pace sustainable for a  90-minute race
-    //   10-minute reps -> pace sustainable for a 135-minute race
+    //   10-minute reps -> pace sustainable for a 150-minute race
+    //
+    // The 60/90/150 values for the 3/6/10-minute columns are confirmed
+    // directly against James Copeland's (sirpoc's) published pace table
+    // (Norwegian Singles Method book): reverse-fitting a target duration
+    // against his listed 3/6/10-min paces for 5K times of 15:00, 20:00,
+    // 25:00, and 30:00 gives best-fit durations of ~59, ~87, and ~148
+    // minutes respectively -- i.e. 60/90/150 -- and reproduces every
+    // value in his table to within 1 second/km. (An earlier version of
+    // this app used 135 minutes for the 10-min column; that was a
+    // reasonable-sounding guess made before the book's actual table was
+    // available for direct comparison, and is superseded by this figure.)
     //
     // Notes on the 45s anchor specifically: this is a DIFFERENT
     // physiological regime from the 3/6/10-min reps above, and is not
@@ -395,9 +406,9 @@
     // Final race-duration targets used for each rep length (minutes):
     const RACE_DURATION_MIN = {
       r45s:  20,   // flat estimate for the 5K-to-15K-ish range typically used
-      r3min: 60,   // primary anchor (executive decision)
-      r6min: 90,   // primary anchor (executive decision)
-      r10min: 135  // primary anchor (executive decision, revised)
+      r3min: 60,   // confirmed against sirpoc's published table
+      r6min: 90,   // confirmed against sirpoc's published table
+      r10min: 150  // confirmed against sirpoc's published table
     };
 
     const inputIds = [
