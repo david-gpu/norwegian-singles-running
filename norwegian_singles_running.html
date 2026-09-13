@@ -278,7 +278,7 @@
     <div class="metric-row">
       <div>
         <div class="metric-label">45s / 15s Sub-Threshold</div>
-        <div class="metric-sublabel">5K Race Pace</div>
+        <div class="metric-sublabel">20-Minute Race Pace</div>
       </div>
       <div class="metric-value">
         <div class="metric-value-sub" id="pace45s15s">VDOT: --:-- /km</div>
@@ -289,7 +289,7 @@
     <div class="metric-row">
       <div>
         <div class="metric-label">90s / 30s Sub-Threshold</div>
-        <div class="metric-sublabel">10K Race Pace</div>
+        <div class="metric-sublabel">35-Minute Race Pace</div>
       </div>
       <div class="metric-value">
         <div class="metric-value-sub" id="pace90s">VDOT: --:-- /km</div>
@@ -300,7 +300,7 @@
     <div class="metric-row">
       <div>
         <div class="metric-label">3min / 60s Sub-Threshold</div>
-        <div class="metric-sublabel">14K Race Pace</div>
+        <div class="metric-sublabel">60-Minute Race Pace</div>
       </div>
       <div class="metric-value">
         <div class="metric-value-sub" id="pace3min">VDOT: --:-- /km</div>
@@ -311,7 +311,7 @@
     <div class="metric-row">
       <div>
         <div class="metric-label">6min / 75s Sub-Threshold</div>
-        <div class="metric-sublabel">20K Race Pace</div>
+        <div class="metric-sublabel">90-Minute Race Pace</div>
       </div>
       <div class="metric-value">
         <div class="metric-value-sub" id="pace6min">VDOT: --:-- /km</div>
@@ -322,7 +322,7 @@
     <div class="metric-row">
       <div>
         <div class="metric-label">10min / 2min Sub-Threshold</div>
-        <div class="metric-sublabel">28K Race Pace</div>
+        <div class="metric-sublabel">120-Minute Race Pace</div>
       </div>
       <div class="metric-value">
         <div class="metric-value-sub" id="pace10min">VDOT: --:-- /km</div>
@@ -333,7 +333,7 @@
     <div class="metric-row">
       <div>
         <div class="metric-label">20min / 4min Sub-Threshold</div>
-        <div class="metric-sublabel">Marathon Race Pace</div>
+        <div class="metric-sublabel">180-Minute Race Pace</div>
       </div>
       <div class="metric-value">
         <div class="metric-value-sub" id="pace20min">VDOT: --:-- /km</div>
@@ -372,6 +372,53 @@
   <script>
     const STORAGE_KEY = 'running_calc_inputs_v4';
     const RIEGEL_EXPONENT = 1.06;
+
+    // =====================================================================
+    // SECTION 2A METHODOLOGY: DURATION-PEGGED SUB-THRESHOLD PACES
+    // =====================================================================
+    // Sub-threshold interval pace should be pegged to a *race duration*,
+    // not a race *distance*. A fixed distance (e.g. "28K pace") takes a
+    // wildly different amount of time to run depending on the athlete's
+    // ability, so it does not represent a consistent physiological
+    // target (proximity to lactate threshold) across athletes. A fixed
+    // duration, converted to a personal pace via VDOT/Riegel, does.
+    //
+    // Primary anchors (executive decision, after J. Copeland's Norwegian
+    // Singles Method, adapted here to duration rather than distance):
+    //   3-minute reps  -> pace sustainable for a  60-minute race
+    //   6-minute reps  -> pace sustainable for a  90-minute race
+    //   10-minute reps -> pace sustainable for a 120-minute race
+    //
+    // Rationale for the increasing race-duration target as rep length
+    // grows: longer uninterrupted work bouts need more pace "cushion"
+    // below true threshold to avoid accumulating lactate over the rep,
+    // since there's less recovery time (relative to work time) to clear it.
+    //
+    // The remaining rep lengths (45s, 90s, 20min) are not independently
+    // chosen -- they're extrapolated from the three anchors above using
+    // a smooth curve, so the whole ladder behaves consistently:
+    //
+    //   R(I) = a + b * sqrt(I)      [I = rep duration, R = race-duration
+    //                                 target, both in minutes]
+    //
+    // Fitting this curve (least squares) through the anchors
+    // (3, 60), (6, 90), (10, 120) plus a fourth calibration point
+    // (0.75 min / 45s -> 20 min) gives a ~ -16.66, b ~ 43.44, which
+    // reproduces all three primary anchors to within ~1 minute and
+    // yields the extrapolated values below (rounded to clean numbers).
+    // If the primary anchors above are ever revised, re-run the fit
+    // (see project notes) rather than hand-editing the extrapolated
+    // values in isolation, so the ladder stays internally consistent.
+    //
+    // Final race-duration targets used for every rep length (minutes):
+    const RACE_DURATION_MIN = {
+      r45s:  20,   // extrapolated (fit gives ~21)
+      r90s:  35,   // extrapolated (fit gives ~36.5)
+      r3min: 60,   // primary anchor (executive decision)
+      r6min: 90,   // primary anchor (executive decision)
+      r10min: 120, // primary anchor (executive decision)
+      r20min: 180  // extrapolated (fit gives ~177.6)
+    };
 
     const inputIds = [
       'ttDistance', 'ttHours', 'ttMinutes', 'ttSeconds', 'ttTemp', 'ttDew', 'ttSolar',
@@ -438,6 +485,26 @@
       return midV;
     }
 
+    // VDOT, solved for pace at a target *duration* directly, rather than
+    // finding a distance and back-deriving the duration during the search
+    // (as vdotVelocity does). Since the duration is already known here,
+    // %VO2max(duration) is fixed up front, and only velocity is searched
+    // for -- a simpler and more direct bisection than the distance-based
+    // version above.
+    function vdotVelocityForDuration(vdot, targetDurationMinutes) {
+      if (!vdot || !targetDurationMinutes || vdot <= 0 || targetDurationMinutes <= 0) return 0;
+      const percentMax = 0.8 + (0.1894393 * Math.exp(-0.012778 * targetDurationMinutes)) + (0.2989558 * Math.exp(-0.1932605 * targetDurationMinutes));
+      let lowV = 50.0, highV = 1000.0, midV = 0.0;
+      for (let i = 0; i < 40; i++) {
+        midV = (lowV + highV) / 2.0;
+        const vo2 = -4.60 + (0.182258 * midV) + (0.000104 * Math.pow(midV, 2));
+        const calcVdot = vo2 / percentMax;
+        if (calcVdot < vdot) lowV = midV;
+        else highV = midV;
+      }
+      return midV;
+    }
+
     function riegelTime(anchorDistanceMeters, anchorTimeSeconds, targetDistanceMeters) {
       if (!anchorDistanceMeters || !anchorTimeSeconds || !targetDistanceMeters) return 0;
       if (anchorDistanceMeters <= 0 || anchorTimeSeconds <= 0 || targetDistanceMeters <= 0) return 0;
@@ -448,6 +515,18 @@
       const t = riegelTime(anchorDistanceMeters, anchorTimeSeconds, targetDistanceMeters);
       if (!t || t <= 0) return 0;
       return targetDistanceMeters / (t / 60.0);
+    }
+
+    // Riegel, solved for pace at a target *duration* rather than a target
+    // *distance*. Riegel's law is T = T1 * (D/D1)^1.06; inverting for D
+    // given a target time T gives D = D1 * (T/T1)^(1/1.06). This is the
+    // distance the athlete would cover in that time, from which pace
+    // (velocity) follows directly. Closed-form -- no iteration needed.
+    function riegelVelocityForDuration(anchorDistanceMeters, anchorTimeSeconds, targetDurationSeconds) {
+      if (!anchorDistanceMeters || !anchorTimeSeconds || !targetDurationSeconds) return 0;
+      if (anchorDistanceMeters <= 0 || anchorTimeSeconds <= 0 || targetDurationSeconds <= 0) return 0;
+      const targetDistanceMeters = anchorDistanceMeters * Math.pow(targetDurationSeconds / anchorTimeSeconds, 1 / RIEGEL_EXPONENT);
+      return targetDistanceMeters / (targetDurationSeconds / 60.0);
     }
 
     function formatPace(velocityMPerMin, heatFactor, prefix = "") {
@@ -548,37 +627,42 @@
       }
 
       // 1. Calculate Sub-Threshold Workout Paces
-      const v5kDaniels  = vdotVelocity(idealVdot, 5000);
-      const v10kDaniels = vdotVelocity(idealVdot, 10000);
-      const v14kDaniels = vdotVelocity(idealVdot, 14000);
-      const v20kDaniels = vdotVelocity(idealVdot, 20000);
-      const v28kDaniels = vdotVelocity(idealVdot, 28000);
-      const vMarathonDaniels = vdotVelocity(idealVdot, 42195);
+      // Each rep length is pegged to the pace sustainable for a FIXED
+      // RACE DURATION (see RACE_DURATION_MIN above and the methodology
+      // comment there), not a fixed race distance. The duration is the
+      // same for every athlete; VDOT/Riegel translate it into each
+      // athlete's own personal pace.
+      const v45sDaniels  = vdotVelocityForDuration(idealVdot, RACE_DURATION_MIN.r45s);
+      const v90sDaniels  = vdotVelocityForDuration(idealVdot, RACE_DURATION_MIN.r90s);
+      const v3minDaniels = vdotVelocityForDuration(idealVdot, RACE_DURATION_MIN.r3min);
+      const v6minDaniels = vdotVelocityForDuration(idealVdot, RACE_DURATION_MIN.r6min);
+      const v10minDaniels = vdotVelocityForDuration(idealVdot, RACE_DURATION_MIN.r10min);
+      const v20minDaniels = vdotVelocityForDuration(idealVdot, RACE_DURATION_MIN.r20min);
 
-      const v5kRiegel  = riegelVelocity(ttDistance, idealTtSec, 5000);
-      const v10kRiegel = riegelVelocity(ttDistance, idealTtSec, 10000);
-      const v14kRiegel = riegelVelocity(ttDistance, idealTtSec, 14000);
-      const v20kRiegel = riegelVelocity(ttDistance, idealTtSec, 20000);
-      const v28kRiegel = riegelVelocity(ttDistance, idealTtSec, 28000);
-      const vMarathonRiegel = riegelVelocity(ttDistance, idealTtSec, 42195);
+      const v45sRiegel  = riegelVelocityForDuration(ttDistance, idealTtSec, RACE_DURATION_MIN.r45s * 60);
+      const v90sRiegel  = riegelVelocityForDuration(ttDistance, idealTtSec, RACE_DURATION_MIN.r90s * 60);
+      const v3minRiegel = riegelVelocityForDuration(ttDistance, idealTtSec, RACE_DURATION_MIN.r3min * 60);
+      const v6minRiegel = riegelVelocityForDuration(ttDistance, idealTtSec, RACE_DURATION_MIN.r6min * 60);
+      const v10minRiegel = riegelVelocityForDuration(ttDistance, idealTtSec, RACE_DURATION_MIN.r10min * 60);
+      const v20minRiegel = riegelVelocityForDuration(ttDistance, idealTtSec, RACE_DURATION_MIN.r20min * 60);
 
-      document.getElementById('pace45s15s').textContent = formatPace(v5kDaniels, woHeatFactor, "VDOT: ");
-      document.getElementById('pace45s15sAlt').textContent = formatPace(v5kRiegel, woHeatFactor, "Riegel: ");
+      document.getElementById('pace45s15s').textContent = formatPace(v45sDaniels, woHeatFactor, "VDOT: ");
+      document.getElementById('pace45s15sAlt').textContent = formatPace(v45sRiegel, woHeatFactor, "Riegel: ");
 
-      document.getElementById('pace90s').textContent = formatPace(v10kDaniels, woHeatFactor, "VDOT: ");
-      document.getElementById('pace90sAlt').textContent = formatPace(v10kRiegel, woHeatFactor, "Riegel: ");
+      document.getElementById('pace90s').textContent = formatPace(v90sDaniels, woHeatFactor, "VDOT: ");
+      document.getElementById('pace90sAlt').textContent = formatPace(v90sRiegel, woHeatFactor, "Riegel: ");
 
-      document.getElementById('pace3min').textContent = formatPace(v14kDaniels, woHeatFactor, "VDOT: ");
-      document.getElementById('pace3minAlt').textContent = formatPace(v14kRiegel, woHeatFactor, "Riegel: ");
+      document.getElementById('pace3min').textContent = formatPace(v3minDaniels, woHeatFactor, "VDOT: ");
+      document.getElementById('pace3minAlt').textContent = formatPace(v3minRiegel, woHeatFactor, "Riegel: ");
 
-      document.getElementById('pace6min').textContent = formatPace(v20kDaniels, woHeatFactor, "VDOT: ");
-      document.getElementById('pace6minAlt').textContent = formatPace(v20kRiegel, woHeatFactor, "Riegel: ");
+      document.getElementById('pace6min').textContent = formatPace(v6minDaniels, woHeatFactor, "VDOT: ");
+      document.getElementById('pace6minAlt').textContent = formatPace(v6minRiegel, woHeatFactor, "Riegel: ");
 
-      document.getElementById('pace10min').textContent = formatPace(v28kDaniels, woHeatFactor, "VDOT: ");
-      document.getElementById('pace10minAlt').textContent = formatPace(v28kRiegel, woHeatFactor, "Riegel: ");
+      document.getElementById('pace10min').textContent = formatPace(v10minDaniels, woHeatFactor, "VDOT: ");
+      document.getElementById('pace10minAlt').textContent = formatPace(v10minRiegel, woHeatFactor, "Riegel: ");
 
-      document.getElementById('pace20min').textContent = formatPace(vMarathonDaniels, woHeatFactor, "VDOT: ");
-      document.getElementById('pace20minAlt').textContent = formatPace(vMarathonRiegel, woHeatFactor, "Riegel: ");
+      document.getElementById('pace20min').textContent = formatPace(v20minDaniels, woHeatFactor, "VDOT: ");
+      document.getElementById('pace20minAlt').textContent = formatPace(v20minRiegel, woHeatFactor, "Riegel: ");
 
       // 2. Calculate Race Predictions under Target Workout WBGT
       const v5k = vdotVelocity(idealVdot, 5000);
