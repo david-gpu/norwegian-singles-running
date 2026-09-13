@@ -288,17 +288,6 @@
 
     <div class="metric-row">
       <div>
-        <div class="metric-label">90s / 30s Sub-Threshold</div>
-        <div class="metric-sublabel">35-Minute Race Pace</div>
-      </div>
-      <div class="metric-value">
-        <div class="metric-value-sub" id="pace90s">VDOT: --:-- /km</div>
-        <div class="metric-value-sub" id="pace90sAlt">Riegel: --:-- /km</div>
-      </div>
-    </div>
-
-    <div class="metric-row">
-      <div>
         <div class="metric-label">3min / 60s Sub-Threshold</div>
         <div class="metric-sublabel">60-Minute Race Pace</div>
       </div>
@@ -322,25 +311,15 @@
     <div class="metric-row">
       <div>
         <div class="metric-label">10min / 2min Sub-Threshold</div>
-        <div class="metric-sublabel">120-Minute Race Pace</div>
+        <div class="metric-sublabel">135-Minute Race Pace</div>
       </div>
       <div class="metric-value">
         <div class="metric-value-sub" id="pace10min">VDOT: --:-- /km</div>
         <div class="metric-value-sub" id="pace10minAlt">Riegel: --:-- /km</div>
       </div>
     </div>
-
-    <div class="metric-row">
-      <div>
-        <div class="metric-label">20min / 4min Sub-Threshold</div>
-        <div class="metric-sublabel">180-Minute Race Pace</div>
-      </div>
-      <div class="metric-value">
-        <div class="metric-value-sub" id="pace20min">VDOT: --:-- /km</div>
-        <div class="metric-value-sub" id="pace20minAlt">Riegel: --:-- /km</div>
-      </div>
-    </div>
   </div>
+
 
   <!-- ===================== SECTION 2B: RACE TIME PROJECTIONS ===================== -->
   <div class="section-heading">2b &middot; Race Time Projections</div>
@@ -383,41 +362,42 @@
     // target (proximity to lactate threshold) across athletes. A fixed
     // duration, converted to a personal pace via VDOT/Riegel, does.
     //
-    // Primary anchors (executive decision, after J. Copeland's Norwegian
-    // Singles Method, adapted here to duration rather than distance):
+    // Only the four rep lengths actually used by Bakken/Copeland are
+    // included here -- 90s and 20min reps were dropped (neither source
+    // uses them; they were an earlier, unfounded extrapolation).
+    //
+    //   45-second reps -> pace sustainable for a  20-minute race
     //   3-minute reps  -> pace sustainable for a  60-minute race
     //   6-minute reps  -> pace sustainable for a  90-minute race
-    //   10-minute reps -> pace sustainable for a 120-minute race
+    //   10-minute reps -> pace sustainable for a 135-minute race
+    //
+    // Notes on the 45s anchor specifically: this is a DIFFERENT
+    // physiological regime from the 3/6/10-min reps above, and is not
+    // derived from the same curve. With only 45s of work and 15s of
+    // recovery, there isn't enough continuous work time for lactate to
+    // reach steady state the way it does over 3-10 continuous minutes,
+    // so the "equivalent sustained race duration" framing doesn't
+    // transfer cleanly to reps this short. Real-world practice (Bakken
+    // describes a 45/15 set as a progression roughly from 10-15K pace
+    // down to 3-5K pace; most online accounts land on something close
+    // to 5K pace) runs meaningfully faster than a naive duration-curve
+    // extrapolation would suggest. Rather than model a progression
+    // (impractical for most runners without lactate feedback), 45s reps
+    // here are pegged to a flat 20-minute race pace as a reasonable
+    // single value approximating that range.
     //
     // Rationale for the increasing race-duration target as rep length
-    // grows: longer uninterrupted work bouts need more pace "cushion"
-    // below true threshold to avoid accumulating lactate over the rep,
-    // since there's less recovery time (relative to work time) to clear it.
+    // grows from 3 to 10 min: longer uninterrupted work bouts need more
+    // pace "cushion" below true threshold to avoid accumulating lactate
+    // over the rep, since there's less recovery time (relative to work
+    // time) to clear it.
     //
-    // The remaining rep lengths (45s, 90s, 20min) are not independently
-    // chosen -- they're extrapolated from the three anchors above using
-    // a smooth curve, so the whole ladder behaves consistently:
-    //
-    //   R(I) = a + b * sqrt(I)      [I = rep duration, R = race-duration
-    //                                 target, both in minutes]
-    //
-    // Fitting this curve (least squares) through the anchors
-    // (3, 60), (6, 90), (10, 120) plus a fourth calibration point
-    // (0.75 min / 45s -> 20 min) gives a ~ -16.66, b ~ 43.44, which
-    // reproduces all three primary anchors to within ~1 minute and
-    // yields the extrapolated values below (rounded to clean numbers).
-    // If the primary anchors above are ever revised, re-run the fit
-    // (see project notes) rather than hand-editing the extrapolated
-    // values in isolation, so the ladder stays internally consistent.
-    //
-    // Final race-duration targets used for every rep length (minutes):
+    // Final race-duration targets used for each rep length (minutes):
     const RACE_DURATION_MIN = {
-      r45s:  20,   // extrapolated (fit gives ~21)
-      r90s:  35,   // extrapolated (fit gives ~36.5)
+      r45s:  20,   // flat estimate for the 5K-to-15K-ish range typically used
       r3min: 60,   // primary anchor (executive decision)
       r6min: 90,   // primary anchor (executive decision)
-      r10min: 120, // primary anchor (executive decision)
-      r20min: 180  // extrapolated (fit gives ~177.6)
+      r10min: 135  // primary anchor (executive decision, revised)
     };
 
     const inputIds = [
@@ -568,17 +548,12 @@
     function resetOutputFields() {
       document.getElementById('pace45s15s').textContent = "VDOT: --:-- /km";
       document.getElementById('pace45s15sAlt').textContent = "Riegel: --:-- /km";
-      document.getElementById('pace90s').textContent = "VDOT: --:-- /km";
-      document.getElementById('pace90sAlt').textContent = "Riegel: --:-- /km";
       document.getElementById('pace3min').textContent = "VDOT: --:-- /km";
       document.getElementById('pace3minAlt').textContent = "Riegel: --:-- /km";
       document.getElementById('pace6min').textContent = "VDOT: --:-- /km";
       document.getElementById('pace6minAlt').textContent = "Riegel: --:-- /km";
       document.getElementById('pace10min').textContent = "VDOT: --:-- /km";
       document.getElementById('pace10minAlt').textContent = "Riegel: --:-- /km";
-
-      document.getElementById('pace20min').textContent = "VDOT: --:-- /km";
-      document.getElementById('pace20minAlt').textContent = "Riegel: --:-- /km";
 
       document.getElementById('pred5kVdot').textContent = "VDOT: --:--:-- (--:-- /km)";
       document.getElementById('pred5kRiegel').textContent = "Riegel: --:--:-- (--:-- /km)";
@@ -633,24 +608,17 @@
       // same for every athlete; VDOT/Riegel translate it into each
       // athlete's own personal pace.
       const v45sDaniels  = vdotVelocityForDuration(idealVdot, RACE_DURATION_MIN.r45s);
-      const v90sDaniels  = vdotVelocityForDuration(idealVdot, RACE_DURATION_MIN.r90s);
       const v3minDaniels = vdotVelocityForDuration(idealVdot, RACE_DURATION_MIN.r3min);
       const v6minDaniels = vdotVelocityForDuration(idealVdot, RACE_DURATION_MIN.r6min);
       const v10minDaniels = vdotVelocityForDuration(idealVdot, RACE_DURATION_MIN.r10min);
-      const v20minDaniels = vdotVelocityForDuration(idealVdot, RACE_DURATION_MIN.r20min);
 
       const v45sRiegel  = riegelVelocityForDuration(ttDistance, idealTtSec, RACE_DURATION_MIN.r45s * 60);
-      const v90sRiegel  = riegelVelocityForDuration(ttDistance, idealTtSec, RACE_DURATION_MIN.r90s * 60);
       const v3minRiegel = riegelVelocityForDuration(ttDistance, idealTtSec, RACE_DURATION_MIN.r3min * 60);
       const v6minRiegel = riegelVelocityForDuration(ttDistance, idealTtSec, RACE_DURATION_MIN.r6min * 60);
       const v10minRiegel = riegelVelocityForDuration(ttDistance, idealTtSec, RACE_DURATION_MIN.r10min * 60);
-      const v20minRiegel = riegelVelocityForDuration(ttDistance, idealTtSec, RACE_DURATION_MIN.r20min * 60);
 
       document.getElementById('pace45s15s').textContent = formatPace(v45sDaniels, woHeatFactor, "VDOT: ");
       document.getElementById('pace45s15sAlt').textContent = formatPace(v45sRiegel, woHeatFactor, "Riegel: ");
-
-      document.getElementById('pace90s').textContent = formatPace(v90sDaniels, woHeatFactor, "VDOT: ");
-      document.getElementById('pace90sAlt').textContent = formatPace(v90sRiegel, woHeatFactor, "Riegel: ");
 
       document.getElementById('pace3min').textContent = formatPace(v3minDaniels, woHeatFactor, "VDOT: ");
       document.getElementById('pace3minAlt').textContent = formatPace(v3minRiegel, woHeatFactor, "Riegel: ");
@@ -660,9 +628,6 @@
 
       document.getElementById('pace10min').textContent = formatPace(v10minDaniels, woHeatFactor, "VDOT: ");
       document.getElementById('pace10minAlt').textContent = formatPace(v10minRiegel, woHeatFactor, "Riegel: ");
-
-      document.getElementById('pace20min').textContent = formatPace(v20minDaniels, woHeatFactor, "VDOT: ");
-      document.getElementById('pace20minAlt').textContent = formatPace(v20minRiegel, woHeatFactor, "Riegel: ");
 
       // 2. Calculate Race Predictions under Target Workout WBGT
       const v5k = vdotVelocity(idealVdot, 5000);
