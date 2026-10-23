@@ -223,18 +223,9 @@
       </div>
     </div>
 
-    <div class="grid-2">
-      <div class="input-group no-margin">
-        <label for="paceModel">Pace Model</label>
-        <select id="paceModel" onchange="recalculate()">
-          <option value="copeland" selected>James Copeland</option>
-          <option value="bakken">Marius Bakken</option>
-        </select>
-      </div>
-      <div class="input-group no-margin">
-        <label for="riegelExponent">Riegel Exponent</label>
-        <input type="number" id="riegelExponent" inputmode="decimal" step="0.01" value="1.12" min="1.00" max="1.30" oninput="recalculate()" onchange="recalculate()">
-      </div>
+    <div class="input-group no-margin">
+      <label for="riegelExponent">Riegel Exponent</label>
+      <input type="number" id="riegelExponent" inputmode="decimal" step="0.01" value="1.12" min="1.00" max="1.30" oninput="recalculate()" onchange="recalculate()">
     </div>
     <div class="help-text">
       <strong>Exponent guidelines:</strong> Novices: ~1.15&ndash;1.20 | Club runners: ~1.10&ndash;1.15 | Elites &amp; Sub-elites: ~1.06&ndash;1.10
@@ -294,7 +285,7 @@
         <div class="metric-label">45s / 15s Sub-Threshold</div>
         <div class="metric-sublabel" id="sub45s15s">20-Minute Race Pace</div>
       </div>
-      <div class="metric-value" id="pace45s15s">--:-- /km</div>
+      <div class="metric-value" id="pace45s15s">--:-- ~ --:-- /km</div>
     </div>
 
     <div class="metric-row">
@@ -302,7 +293,7 @@
         <div class="metric-label">3min / 60s Sub-Threshold</div>
         <div class="metric-sublabel" id="sub3min">60-Minute Race Pace</div>
       </div>
-      <div class="metric-value" id="pace3min">--:-- /km</div>
+      <div class="metric-value" id="pace3min">--:-- ~ --:-- /km</div>
     </div>
 
     <div class="metric-row">
@@ -310,7 +301,7 @@
         <div class="metric-label">6min / 75s Sub-Threshold</div>
         <div class="metric-sublabel" id="sub6min">90-Minute Race Pace</div>
       </div>
-      <div class="metric-value" id="pace6min">--:-- /km</div>
+      <div class="metric-value" id="pace6min">--:-- ~ --:-- /km</div>
     </div>
 
     <div class="metric-row">
@@ -318,7 +309,7 @@
         <div class="metric-label">10min / 2min Sub-Threshold</div>
         <div class="metric-sublabel" id="sub10min">150-Minute Race Pace</div>
       </div>
-      <div class="metric-value" id="pace10min">--:-- /km</div>
+      <div class="metric-value" id="pace10min">--:-- ~ --:-- /km</div>
     </div>
   </div>
 
@@ -341,7 +332,7 @@
   </div>
 
   <script>
-    const STORAGE_KEY = 'running_calc_inputs_v7';
+    const STORAGE_KEY = 'running_calc_inputs_v8';
 
     // =====================================================================
     // RIEGEL EXPONENT METHODOLOGY & SOURCE CITATION
@@ -363,21 +354,23 @@
     //   the flat/ideal, weather-adjusted ITT time via calculateVDOT), using
     //   Daniels' %VO2max-vs-duration curve to find the velocity that elicits
     //   the target %VO2max for each duration-pegged rep length, then solving
-    //   Daniels' VO2 velocity equation for that velocity. The race durations
-    //   pegged to each rep length depend on the selected pace model:
+    //   Daniels' VO2 velocity equation for that velocity. The race duration
+    //   pegged to each rep length differs by source:
     //   * James Copeland: from his book Norwegian Singles Method (exact)
     //   * Marius Bakken:  from his book The Norwegian Method Applied (approximated)
-    //   PACE_MODELS below is the single source of truth for these durations;
+    //   Copeland is always the faster end and Bakken the more conservative
+    //   end, so each rep length is shown as a range spanning both.
+    //   PACE_DURATIONS below is the single source of truth for these durations;
     //   every other part of the app reads them from there.
 
-    const PACE_MODELS = {
-      copeland: { durations: { r45s: 20, r3min:  60, r6min:  90, r10min: 150 } },
-      bakken:   { durations: { r45s: 60, r3min: 100, r6min: 180, r10min: 240 } }
+    const PACE_DURATIONS = {
+      r45s:   { copeland:  20, bakken:  60 },
+      r3min:  { copeland:  60, bakken: 100 },
+      r6min:  { copeland:  90, bakken: 180 },
+      r10min: { copeland: 150, bakken: 240 }
     };
-    const DEFAULT_PACE_MODEL = 'copeland';
 
     const inputIds = [
-      'paceModel',
       'ttDistance', 'ttHours', 'ttMinutes', 'ttSeconds', 'ttTemp', 'ttDew', 'ttSolar',
       'riegelExponent', 'woTemp', 'woDew', 'woSolar'
     ];
@@ -486,7 +479,11 @@
     }
 
     function formatPace(velocityMPerMin, heatFactor) {
-      if (!velocityMPerMin || velocityMPerMin <= 0 || isNaN(velocityMPerMin)) return `--:-- /km`;
+      return `${paceCore(velocityMPerMin, heatFactor)} /km`;
+    }
+
+    function paceCore(velocityMPerMin, heatFactor) {
+      if (!velocityMPerMin || velocityMPerMin <= 0 || isNaN(velocityMPerMin)) return `--:--`;
       const adjVelocity = velocityMPerMin / heatFactor;
       const totalSecPerKm = Math.round((1000 / adjVelocity) * 60);
 
@@ -495,7 +492,11 @@
       const mStr = String(m).padStart(2, '0');
       const sStr = String(s).padStart(2, '0');
 
-      return `${mStr}:${sStr} /km`;
+      return `${mStr}:${sStr}`;
+    }
+
+    function formatPaceRange(fastVelocity, slowVelocity, heatFactor) {
+      return `${paceCore(fastVelocity, heatFactor)} ~ ${paceCore(slowVelocity, heatFactor)} /km`;
     }
 
     function paceFromTime(totalSeconds, distanceMeters) {
@@ -522,10 +523,10 @@
     }
 
     function resetOutputFields() {
-      document.getElementById('pace45s15s').textContent = "--:-- /km";
-      document.getElementById('pace3min').textContent = "--:-- /km";
-      document.getElementById('pace6min').textContent = "--:-- /km";
-      document.getElementById('pace10min').textContent = "--:-- /km";
+      document.getElementById('pace45s15s').textContent = "--:-- ~ --:-- /km";
+      document.getElementById('pace3min').textContent = "--:-- ~ --:-- /km";
+      document.getElementById('pace6min').textContent = "--:-- ~ --:-- /km";
+      document.getElementById('pace10min').textContent = "--:-- ~ --:-- /km";
 
       document.getElementById('pred5k').textContent = "--:--:-- (--:-- /km)";
       document.getElementById('pred10k').textContent = "--:--:-- (--:-- /km)";
@@ -542,14 +543,13 @@
       const ttSolar = document.getElementById('ttSolar').value;
       const riegelExponent = getNum('riegelExponent', 1.12);
 
-      const paceModelEl = document.getElementById('paceModel');
-      const paceModelKey = (paceModelEl && PACE_MODELS[paceModelEl.value]) ? paceModelEl.value : DEFAULT_PACE_MODEL;
-      const durations = PACE_MODELS[paceModelKey].durations;
+      const durationRangeLabel = key =>
+        `${PACE_DURATIONS[key].copeland}~${PACE_DURATIONS[key].bakken}-Minute Race Pace`;
 
-      document.getElementById('sub45s15s').textContent = `${durations.r45s}-Minute Race Pace`;
-      document.getElementById('sub3min').textContent = `${durations.r3min}-Minute Race Pace`;
-      document.getElementById('sub6min').textContent = `${durations.r6min}-Minute Race Pace`;
-      document.getElementById('sub10min').textContent = `${durations.r10min}-Minute Race Pace`;
+      document.getElementById('sub45s15s').textContent = durationRangeLabel('r45s');
+      document.getElementById('sub3min').textContent = durationRangeLabel('r3min');
+      document.getElementById('sub6min').textContent = durationRangeLabel('r6min');
+      document.getElementById('sub10min').textContent = durationRangeLabel('r10min');
 
       const woTemp = getNum('woTemp', 25);
       const woDew = getNum('woDew', 18);
@@ -580,16 +580,18 @@
         return;
       }
 
-      // 1. Calculate Sub-Threshold Workout Paces using Weather-Adjusted Jack Daniels' VDOT Formula
-      const v45sVdot  = vdotVelocityForDuration(idealVdot, durations.r45s);
-      const v3minVdot = vdotVelocityForDuration(idealVdot, durations.r3min);
-      const v6minVdot = vdotVelocityForDuration(idealVdot, durations.r6min);
-      const v10minVdot = vdotVelocityForDuration(idealVdot, durations.r10min);
+      // 1. Calculate Sub-Threshold Workout Pace ranges using Weather-Adjusted Jack Daniels' VDOT Formula
+      //    Shortest (Copeland) duration gives the fastest pace; longest (Bakken) the slowest.
+      const paceRange = key => formatPaceRange(
+        vdotVelocityForDuration(idealVdot, PACE_DURATIONS[key].copeland),
+        vdotVelocityForDuration(idealVdot, PACE_DURATIONS[key].bakken),
+        woHeatFactor
+      );
 
-      document.getElementById('pace45s15s').textContent = formatPace(v45sVdot, woHeatFactor);
-      document.getElementById('pace3min').textContent = formatPace(v3minVdot, woHeatFactor);
-      document.getElementById('pace6min').textContent = formatPace(v6minVdot, woHeatFactor);
-      document.getElementById('pace10min').textContent = formatPace(v10minVdot, woHeatFactor);
+      document.getElementById('pace45s15s').textContent = paceRange('r45s');
+      document.getElementById('pace3min').textContent = paceRange('r3min');
+      document.getElementById('pace6min').textContent = paceRange('r6min');
+      document.getElementById('pace10min').textContent = paceRange('r10min');
 
       // 2. Calculate Race Time Projections using Weather-Adjusted Riegel's Formula
       const time5kRiegel = riegelTime(ttDistance, idealTtSec, 5000, riegelExponent) * woHeatFactor;
