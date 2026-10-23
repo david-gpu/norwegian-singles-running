@@ -174,6 +174,42 @@
       margin-top: 6px;
       line-height: 1.35;
     }
+
+    /* Wide screens: full width; the settings card sits at the top left, over
+       the first section, and sections 1, 2 and 3 share the row side by side.
+       Each section heading and its card share one grid cell. */
+    @media (min-width: 900px) {
+      body {
+        max-width: none;
+        padding: 16px 20px 32px;
+      }
+
+      .settings-card {
+        width: calc((100% - 32px) / 3);
+      }
+
+      .sections {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+        align-items: start;
+      }
+
+      .section-column {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+
+      .section-column > .section-heading {
+        margin: 0 0 8px;
+      }
+
+      .section-column > .card {
+        flex: 1;
+        margin-bottom: 0;
+      }
+    }
   </style>
 </head>
 <body>
@@ -181,7 +217,7 @@
   <h1>Heat-Adjusted Running Calculator</h1>
 
   <!-- ===================== GLOBAL SETTINGS ===================== -->
-  <div class="card">
+  <div class="card settings-card">
     <div class="subsection-label">Settings</div>
 
     <div class="grid-2">
@@ -202,7 +238,9 @@
     </div>
   </div>
 
+  <div class="sections">
   <!-- ===================== SECTION 1: TIME TRIAL (ITT) ===================== -->
+  <div class="section-column">
   <div class="section-heading">1 &middot; Individual Time Trial Race</div>
   <div class="card">
     <div class="subsection-label">Inputs</div>
@@ -261,8 +299,10 @@
       <div class="metric-value"><span class="badge" id="dispVdot">0.0</span></div>
     </div>
   </div>
+  </div>
 
   <!-- ===================== SECTION 2: TRAINING PACE TARGETS ===================== -->
+  <div class="section-column">
   <div class="section-heading">2 &middot; Training Pace Targets</div>
   <div class="card">
     <div class="subsection-label">Inputs</div>
@@ -325,8 +365,10 @@
       <div class="metric-value" id="pace10min">--:-- ~ --:-- /km</div>
     </div>
   </div>
+  </div>
 
   <!-- ===================== SECTION 3: RACE TIME PROJECTIONS ===================== -->
+  <div class="section-column">
   <div class="section-heading">3 &middot; Race Time Projections</div>
   <div class="card">
     <div class="subsection-label">Inputs</div>
@@ -353,6 +395,8 @@
       <div class="metric-label">Half Marathon</div>
       <div class="metric-value" id="predHm">--:--:-- (--:-- /km)</div>
     </div>
+  </div>
+  </div>
   </div>
 
   <script>
