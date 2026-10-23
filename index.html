@@ -157,7 +157,6 @@
       margin-top: 14px;
       padding-top: 10px;
       border-top: 1px dashed var(--border);
-      color: var(--accent);
     }
 
     .badge {
@@ -180,6 +179,28 @@
 <body>
 
   <h1>Heat-Adjusted Running Calculator</h1>
+
+  <!-- ===================== GLOBAL SETTINGS ===================== -->
+  <div class="card">
+    <div class="subsection-label">Settings</div>
+
+    <div class="grid-2">
+      <div class="input-group no-margin">
+        <label for="units">Units</label>
+        <select id="units" onchange="recalculate()">
+          <option value="metric" selected>Metric</option>
+          <option value="imperial">Imperial</option>
+        </select>
+      </div>
+      <div class="input-group no-margin">
+        <label for="outputStyle">Output Style</label>
+        <select id="outputStyle" onchange="recalculate()">
+          <option value="pace" selected>Pace</option>
+          <option value="speed">Speed</option>
+        </select>
+      </div>
+    </div>
+  </div>
 
   <!-- ===================== SECTION 1: TIME TRIAL (ITT) ===================== -->
   <div class="section-heading">1 &middot; Individual Time Trial Race</div>
@@ -223,15 +244,7 @@
       </div>
     </div>
 
-    <div class="input-group no-margin">
-      <label for="riegelExponent">Riegel Exponent</label>
-      <input type="number" id="riegelExponent" inputmode="decimal" step="0.01" value="1.12" min="1.00" max="1.30" oninput="recalculate()" onchange="recalculate()">
-    </div>
-    <div class="help-text">
-      <strong>Exponent guidelines:</strong> Novices: ~1.15&ndash;1.20 | Club runners: ~1.10&ndash;1.15 | Elites &amp; Sub-elites: ~1.06&ndash;1.10
-    </div>
-
-    <div class="subsection-label output-label">Output</div>
+    <div class="subsection-label output-label">Outputs</div>
 
     <div class="metric-row">
       <div>
@@ -249,8 +262,8 @@
     </div>
   </div>
 
-  <!-- ===================== SECTION 2A: TRAINING PACE TARGETS ===================== -->
-  <div class="section-heading">2a &middot; Training Pace Targets</div>
+  <!-- ===================== SECTION 2: TRAINING PACE TARGETS ===================== -->
+  <div class="section-heading">2 &middot; Training Pace Targets</div>
   <div class="card">
     <div class="subsection-label">Inputs</div>
 
@@ -273,7 +286,7 @@
       </div>
     </div>
 
-    <div class="subsection-label output-label">Output (VDOT Weather-Adjusted)</div>
+    <div class="subsection-label output-label">Outputs</div>
 
     <div class="metric-row">
       <div class="metric-label">Training Weather</div>
@@ -313,10 +326,21 @@
     </div>
   </div>
 
-  <!-- ===================== SECTION 2B: RACE TIME PROJECTIONS ===================== -->
-  <div class="section-heading">2b &middot; Race Time Projections</div>
+  <!-- ===================== SECTION 3: RACE TIME PROJECTIONS ===================== -->
+  <div class="section-heading">3 &middot; Race Time Projections</div>
   <div class="card">
-    <div class="metric-sublabel" style="margin-bottom: 8px;">Under the same weather conditions as 2a (Riegel Weather-Adjusted)</div>
+    <div class="subsection-label">Inputs</div>
+
+    <div class="input-group">
+      <label for="riegelExponent">Riegel Exponent</label>
+      <input type="number" id="riegelExponent" inputmode="decimal" step="0.01" value="1.12" min="1.00" max="1.30" oninput="recalculate()" onchange="recalculate()">
+    </div>
+    <div class="help-text" style="margin-top: 0;">
+      <strong>Exponent guidelines:</strong> Novices: ~1.15&ndash;1.20 | Club runners: ~1.10&ndash;1.15 | Elites &amp; Sub-elites: ~1.06&ndash;1.10
+    </div>
+
+    <div class="subsection-label output-label">Outputs</div>
+    <div class="metric-sublabel" style="margin: 0 0 8px;">Under the same weather conditions as section 2</div>
     <div class="metric-row">
       <div class="metric-label">5K</div>
       <div class="metric-value" id="pred5k">--:--:-- (--:-- /km)</div>
@@ -332,7 +356,7 @@
   </div>
 
   <script>
-    const STORAGE_KEY = 'running_calc_inputs_v8';
+    const STORAGE_KEY = 'running_calc_inputs_v9';
 
     // =====================================================================
     // RIEGEL EXPONENT METHODOLOGY & SOURCE CITATION
@@ -348,7 +372,14 @@
     // Default setting: 1.12
 
     // =====================================================================
-    // SECTION 2A METHODOLOGY: JACK DANIELS' VDOT SUB-THRESHOLD PACES
+    // GLOBAL SETTINGS
+    // =====================================================================
+    //   Units (metric / imperial) and Output Style (pace / speed) apply to
+    //   every rate shown in sections 2 and 3. They do not affect cached
+    //   inputs: the ITT distance stays in meters regardless of units.
+
+    // =====================================================================
+    // SECTION 2 METHODOLOGY: JACK DANIELS' VDOT SUB-THRESHOLD PACES
     // =====================================================================
     //   Training paces are derived from the runner's VDOT (as computed from
     //   the flat/ideal, weather-adjusted ITT time via calculateVDOT), using
@@ -372,7 +403,7 @@
 
     const inputIds = [
       'ttDistance', 'ttHours', 'ttMinutes', 'ttSeconds', 'ttTemp', 'ttDew', 'ttSolar',
-      'riegelExponent', 'woTemp', 'woDew', 'woSolar'
+      'riegelExponent', 'woTemp', 'woDew', 'woSolar', 'units', 'outputStyle'
     ];
 
     function getNum(id, defaultVal = 0) {
@@ -478,17 +509,61 @@
       return targetDistanceMeters / (targetDurationSeconds / 60.0);
     }
 
-    function formatPace(velocityMPerMin, heatFactor) {
-      return `${paceCore(velocityMPerMin, heatFactor)} /km`;
+    const METERS_PER_MILE = 1609.344;
+
+    function getUnitPrefs() {
+      const unitsEl = document.getElementById('units');
+      const styleEl = document.getElementById('outputStyle');
+      return {
+        units: (unitsEl && unitsEl.value === 'imperial') ? 'imperial' : 'metric',
+        style: (styleEl && styleEl.value === 'speed') ? 'speed' : 'pace'
+      };
     }
 
-    function paceCore(velocityMPerMin, heatFactor) {
-      if (!velocityMPerMin || velocityMPerMin <= 0 || isNaN(velocityMPerMin)) return `--:--`;
-      const adjVelocity = velocityMPerMin / heatFactor;
-      const totalSecPerKm = Math.round((1000 / adjVelocity) * 60);
+    function unitLabel(units) {
+      return units === 'imperial' ? 'mi' : 'km';
+    }
 
-      const m = Math.floor(totalSecPerKm / 60);
-      const s = totalSecPerKm % 60;
+    function speedLabel(units) {
+      return units === 'imperial' ? 'mph' : 'km/h';
+    }
+
+    function speedValue(velocityMPerMin, heatFactor, units) {
+      if (!velocityMPerMin || velocityMPerMin <= 0 || isNaN(velocityMPerMin)) return NaN;
+      const adjVelocity = velocityMPerMin / heatFactor;
+      const speed = units === 'imperial'
+        ? (adjVelocity * 60) / METERS_PER_MILE
+        : (adjVelocity * 60) / 1000;
+      return Number(speed.toFixed(1));
+    }
+
+    function speedCore(speed) {
+      return isNaN(speed) ? '--.-' : speed.toFixed(1);
+    }
+
+    function formatSpeed(speed, units) {
+      return `${speedCore(speed)} ${speedLabel(units)}`;
+    }
+
+    function formatSpeedRange(slowVelocity, fastVelocity, heatFactor, units) {
+      return `${speedCore(speedValue(slowVelocity, heatFactor, units))} ~ ${speedCore(speedValue(fastVelocity, heatFactor, units))} ${speedLabel(units)}`;
+    }
+
+    function paceCore(velocityMPerMin, heatFactor, units = 'metric') {
+      if (!velocityMPerMin || velocityMPerMin <= 0 || isNaN(velocityMPerMin)) return `--:--`;
+      return secondsToMmSs(secondsPerUnit(velocityMPerMin / heatFactor, units));
+    }
+
+    function secondsPerUnit(velocityMPerMin, units) {
+      const distMeters = units === 'imperial' ? METERS_PER_MILE : 1000;
+      return (distMeters / velocityMPerMin) * 60;
+    }
+
+    function secondsToMmSs(seconds) {
+      const totalSecPerUnit = Math.round(seconds);
+
+      const m = Math.floor(totalSecPerUnit / 60);
+      const s = totalSecPerUnit % 60;
       const mStr = String(m).padStart(2, '0');
       const sStr = String(s).padStart(2, '0');
 
@@ -496,16 +571,27 @@
     }
 
     function formatPaceRange(fastVelocity, slowVelocity, heatFactor) {
-      return `${paceCore(fastVelocity, heatFactor)} ~ ${paceCore(slowVelocity, heatFactor)} /km`;
+      const { units, style } = getUnitPrefs();
+      if (style === 'speed') {
+        return formatSpeedRange(slowVelocity, fastVelocity, heatFactor, units);
+      }
+      return `${paceCore(fastVelocity, heatFactor, units)} ~ ${paceCore(slowVelocity, heatFactor, units)} /${unitLabel(units)}`;
     }
 
-    function paceFromTime(totalSeconds, distanceMeters) {
-      if (!totalSeconds || totalSeconds <= 0 || !distanceMeters || distanceMeters <= 0 || isNaN(totalSeconds)) return "--:--";
-      const secPerKm = totalSeconds / (distanceMeters / 1000);
-      let m = Math.floor(secPerKm / 60);
-      let s = Math.round(secPerKm % 60);
-      if (s === 60) { m += 1; s = 0; }
-      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    function formatRateFromTime(totalSeconds, distanceMeters) {
+      const { units, style } = getUnitPrefs();
+      if (!totalSeconds || totalSeconds <= 0 || !distanceMeters || distanceMeters <= 0 || isNaN(totalSeconds)) {
+        return style === 'speed' ? formatSpeed(NaN, units) : `--:-- /${unitLabel(units)}`;
+      }
+      if (style === 'speed') {
+        return formatSpeed(speedValue((distanceMeters / totalSeconds) * 60, 1.0, units), units);
+      }
+      const metersPerUnit = units === 'imperial' ? METERS_PER_MILE : 1000;
+      return `${secondsToMmSs(totalSeconds / (distanceMeters / metersPerUnit))} /${unitLabel(units)}`;
+    }
+
+    function formatRaceLine(totalSeconds, distanceMeters) {
+      return `${formatTime(totalSeconds)} (${formatRateFromTime(totalSeconds, distanceMeters)})`;
     }
 
     function formatTime(totalSeconds) {
@@ -523,14 +609,20 @@
     }
 
     function resetOutputFields() {
-      document.getElementById('pace45s15s').textContent = "--:-- ~ --:-- /km";
-      document.getElementById('pace3min').textContent = "--:-- ~ --:-- /km";
-      document.getElementById('pace6min').textContent = "--:-- ~ --:-- /km";
-      document.getElementById('pace10min').textContent = "--:-- ~ --:-- /km";
+      const { units, style } = getUnitPrefs();
+      const pacePlaceholder = style === 'speed'
+        ? formatSpeedRange(0, 0, 1.0, units)
+        : `--:-- ~ --:-- /${unitLabel(units)}`;
+      const racePlaceholder = formatRaceLine(0, 5000);
 
-      document.getElementById('pred5k').textContent = "--:--:-- (--:-- /km)";
-      document.getElementById('pred10k').textContent = "--:--:-- (--:-- /km)";
-      document.getElementById('predHm').textContent = "--:--:-- (--:-- /km)";
+      document.getElementById('pace45s15s').textContent = pacePlaceholder;
+      document.getElementById('pace3min').textContent = pacePlaceholder;
+      document.getElementById('pace6min').textContent = pacePlaceholder;
+      document.getElementById('pace10min').textContent = pacePlaceholder;
+
+      document.getElementById('pred5k').textContent = racePlaceholder;
+      document.getElementById('pred10k').textContent = racePlaceholder;
+      document.getElementById('predHm').textContent = racePlaceholder;
     }
 
     function recalculate() {
@@ -598,9 +690,9 @@
       const time10kRiegel = riegelTime(ttDistance, idealTtSec, 10000, riegelExponent) * woHeatFactor;
       const timeHmRiegel = riegelTime(ttDistance, idealTtSec, 21097.5, riegelExponent) * woHeatFactor;
 
-      document.getElementById('pred5k').textContent = `${formatTime(time5kRiegel)} (${paceFromTime(time5kRiegel, 5000)} /km)`;
-      document.getElementById('pred10k').textContent = `${formatTime(time10kRiegel)} (${paceFromTime(time10kRiegel, 10000)} /km)`;
-      document.getElementById('predHm').textContent = `${formatTime(timeHmRiegel)} (${paceFromTime(timeHmRiegel, 21097.5)} /km)`;
+      document.getElementById('pred5k').textContent = formatRaceLine(time5kRiegel, 5000);
+      document.getElementById('pred10k').textContent = formatRaceLine(time10kRiegel, 10000);
+      document.getElementById('predHm').textContent = formatRaceLine(timeHmRiegel, 21097.5);
 
       saveState();
     }
