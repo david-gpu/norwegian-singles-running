@@ -336,9 +336,9 @@
     <div class="metric-row">
       <div>
         <div class="metric-label">45s / 15s Sub-Threshold</div>
-        <div class="metric-sublabel" id="sub45s15s">20-Minute Race Pace</div>
+        <div class="metric-sublabel" id="sub45s15s">25-Minute Race Pace</div>
       </div>
-      <div class="metric-value" id="pace45s15s">--:-- ~ --:-- /km</div>
+      <div class="metric-value" id="pace45s15s">--:-- /km</div>
     </div>
 
     <div class="metric-row">
@@ -346,7 +346,7 @@
         <div class="metric-label">3min / 60s Sub-Threshold</div>
         <div class="metric-sublabel" id="sub3min">60-Minute Race Pace</div>
       </div>
-      <div class="metric-value" id="pace3min">--:-- ~ --:-- /km</div>
+      <div class="metric-value" id="pace3min">--:-- /km</div>
     </div>
 
     <div class="metric-row">
@@ -354,7 +354,7 @@
         <div class="metric-label">6min / 75s Sub-Threshold</div>
         <div class="metric-sublabel" id="sub6min">90-Minute Race Pace</div>
       </div>
-      <div class="metric-value" id="pace6min">--:-- ~ --:-- /km</div>
+      <div class="metric-value" id="pace6min">--:-- /km</div>
     </div>
 
     <div class="metric-row">
@@ -362,7 +362,7 @@
         <div class="metric-label">10min / 2min Sub-Threshold</div>
         <div class="metric-sublabel" id="sub10min">150-Minute Race Pace</div>
       </div>
-      <div class="metric-value" id="pace10min">--:-- ~ --:-- /km</div>
+      <div class="metric-value" id="pace10min">--:-- /km</div>
     </div>
   </div>
   </div>
@@ -430,19 +430,21 @@
     //   Daniels' %VO2max-vs-duration curve to find the velocity that elicits
     //   the target %VO2max for each duration-pegged rep length, then solving
     //   Daniels' VO2 velocity equation for that velocity. The race duration
-    //   pegged to each rep length differs by source:
-    //   * James Copeland: from his book Norwegian Singles Method (exact)
-    //   * Marius Bakken:  from his book The Norwegian Method Applied (approximated)
-    //   Copeland is always the faster end and Bakken the more conservative
-    //   end, so each rep length is shown as a range spanning both.
+    //   pegged to each rep length comes from James Copeland's book Norwegian
+    //   Singles Method, with two exceptions:
+    //   * 45-second reps are not in Copeland's book at all. Copeland paces his
+    //     shortest reps as a 20-minute race; 25 minutes is used here instead,
+    //     a deliberate choice to keep the 45s reps easier than the 3min reps.
+    //   * Marius Bakken's durations are deliberately not modelled: his book and
+    //     his online calculator disagree by too much to pick a single value.
     //   PACE_DURATIONS below is the single source of truth for these durations;
     //   every other part of the app reads them from there.
 
     const PACE_DURATIONS = {
-      r45s:   { copeland:  20, bakken:  60 },
-      r3min:  { copeland:  60, bakken: 100 },
-      r6min:  { copeland:  90, bakken: 180 },
-      r10min: { copeland: 150, bakken: 240 }
+      r45s:   25,
+      r3min:  60,
+      r6min:  90,
+      r10min: 150
     };
 
     const inputIds = [
@@ -589,10 +591,6 @@
       return `${speedCore(speed)} ${speedLabel(units)}`;
     }
 
-    function formatSpeedRange(slowVelocity, fastVelocity, heatFactor, units) {
-      return `${speedCore(speedValue(slowVelocity, heatFactor, units))} ~ ${speedCore(speedValue(fastVelocity, heatFactor, units))} ${speedLabel(units)}`;
-    }
-
     function paceCore(velocityMPerMin, heatFactor, units = 'metric') {
       if (!velocityMPerMin || velocityMPerMin <= 0 || isNaN(velocityMPerMin)) return `--:--`;
       return secondsToMmSs(secondsPerUnit(velocityMPerMin / heatFactor, units));
@@ -614,12 +612,12 @@
       return `${mStr}:${sStr}`;
     }
 
-    function formatPaceRange(fastVelocity, slowVelocity, heatFactor) {
+    function formatVelocity(velocityMPerMin, heatFactor) {
       const { units, style } = getUnitPrefs();
       if (style === 'speed') {
-        return formatSpeedRange(slowVelocity, fastVelocity, heatFactor, units);
+        return formatSpeed(speedValue(velocityMPerMin, heatFactor, units), units);
       }
-      return `${paceCore(fastVelocity, heatFactor, units)} ~ ${paceCore(slowVelocity, heatFactor, units)} /${unitLabel(units)}`;
+      return `${paceCore(velocityMPerMin, heatFactor, units)} /${unitLabel(units)}`;
     }
 
     function formatRateFromTime(totalSeconds, distanceMeters) {
@@ -655,8 +653,8 @@
     function resetOutputFields() {
       const { units, style } = getUnitPrefs();
       const pacePlaceholder = style === 'speed'
-        ? formatSpeedRange(0, 0, 1.0, units)
-        : `--:-- ~ --:-- /${unitLabel(units)}`;
+        ? formatSpeed(NaN, units)
+        : `--:-- /${unitLabel(units)}`;
       const racePlaceholder = formatRaceLine(0, 5000);
 
       document.getElementById('pace45s15s').textContent = pacePlaceholder;
@@ -679,13 +677,12 @@
       const ttSolar = document.getElementById('ttSolar').value;
       const riegelExponent = getNum('riegelExponent', 1.12);
 
-      const durationRangeLabel = key =>
-        `${PACE_DURATIONS[key].copeland}~${PACE_DURATIONS[key].bakken}-Minute Race Pace`;
+      const durationLabel = key => `${PACE_DURATIONS[key]}-Minute Race Pace`;
 
-      document.getElementById('sub45s15s').textContent = durationRangeLabel('r45s');
-      document.getElementById('sub3min').textContent = durationRangeLabel('r3min');
-      document.getElementById('sub6min').textContent = durationRangeLabel('r6min');
-      document.getElementById('sub10min').textContent = durationRangeLabel('r10min');
+      document.getElementById('sub45s15s').textContent = durationLabel('r45s');
+      document.getElementById('sub3min').textContent = durationLabel('r3min');
+      document.getElementById('sub6min').textContent = durationLabel('r6min');
+      document.getElementById('sub10min').textContent = durationLabel('r10min');
 
       const woTemp = getNum('woTemp', 25);
       const woDew = getNum('woDew', 18);
@@ -716,18 +713,16 @@
         return;
       }
 
-      // 1. Calculate Sub-Threshold Workout Pace ranges using Weather-Adjusted Jack Daniels' VDOT Formula
-      //    Shortest (Copeland) duration gives the fastest pace; longest (Bakken) the slowest.
-      const paceRange = key => formatPaceRange(
-        vdotVelocityForDuration(idealVdot, PACE_DURATIONS[key].copeland),
-        vdotVelocityForDuration(idealVdot, PACE_DURATIONS[key].bakken),
+      // 1. Calculate Sub-Threshold Workout Paces using Weather-Adjusted Jack Daniels' VDOT Formula
+      const pace = key => formatVelocity(
+        vdotVelocityForDuration(idealVdot, PACE_DURATIONS[key]),
         woHeatFactor
       );
 
-      document.getElementById('pace45s15s').textContent = paceRange('r45s');
-      document.getElementById('pace3min').textContent = paceRange('r3min');
-      document.getElementById('pace6min').textContent = paceRange('r6min');
-      document.getElementById('pace10min').textContent = paceRange('r10min');
+      document.getElementById('pace45s15s').textContent = pace('r45s');
+      document.getElementById('pace3min').textContent = pace('r3min');
+      document.getElementById('pace6min').textContent = pace('r6min');
+      document.getElementById('pace10min').textContent = pace('r10min');
 
       // 2. Calculate Race Time Projections using Weather-Adjusted Riegel's Formula
       const time5kRiegel = riegelTime(ttDistance, idealTtSec, 5000, riegelExponent) * woHeatFactor;
